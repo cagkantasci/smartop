@@ -1,0 +1,46 @@
+import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { PrismaClient } from '@prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
+
+@Injectable()
+export class PrismaService
+  extends PrismaClient
+  implements OnModuleInit, OnModuleDestroy
+{
+  constructor() {
+    const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
+    super({
+      adapter,
+      log:
+        process.env.NODE_ENV === 'development'
+          ? ['query', 'info', 'warn', 'error']
+          : ['error'],
+    });
+  }
+
+  async onModuleInit() {
+    await this.$connect();
+  }
+
+  async onModuleDestroy() {
+    await this.$disconnect();
+  }
+
+  async cleanDatabase() {
+    if (process.env.NODE_ENV !== 'production') {
+      const models = Reflect.ownKeys(this).filter(
+        (key) => typeof key === 'string' && !key.startsWith('_') && !key.startsWith('$'),
+      );
+
+      return Promise.all(
+        models.map((model) => {
+          const modelDelegate = (this as any)[model];
+          if (modelDelegate && typeof modelDelegate.deleteMany === 'function') {
+            return modelDelegate.deleteMany();
+          }
+          return Promise.resolve();
+        }),
+      );
+    }
+  }
+}

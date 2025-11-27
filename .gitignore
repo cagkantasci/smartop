@@ -22,3 +22,22 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Backend specific
+backend/dist
+backend/node_modules
+backend/coverage
+backend/.nyc_output
+
+# Prisma
+backend/prisma/*.db
+backend/prisma/*.db-journal
+backend/generated
+
+# Docker
+.docker

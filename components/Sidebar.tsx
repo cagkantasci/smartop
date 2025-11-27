@@ -14,19 +14,23 @@ interface SidebarProps {
   language?: Language;
   setLanguage?: (lang: Language) => void;
   translations: TranslationDictionary['sidebar'];
+  userName?: string;
+  userRole?: 'admin' | 'manager' | 'operator';
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ 
-  currentView, 
-  setCurrentView, 
-  firmName = "Demo İnşaat A.Ş.", 
-  firmPhone = "+90 555 123 45 67", 
+export const Sidebar: React.FC<SidebarProps> = ({
+  currentView,
+  setCurrentView,
+  firmName = "Demo İnşaat A.Ş.",
+  firmPhone = "+90 555 123 45 67",
   subscriptionPlan = "Kurumsal Plan",
   isDarkMode,
   toggleTheme,
   language,
   setLanguage,
-  translations
+  translations,
+  userName,
+  userRole
 }) => {
   const t = translations;
 
@@ -75,6 +79,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
                 </span>
             </div>
+
+            {userName && (
+              <div className="mt-3 pt-3 border-t border-white/10">
+                <p className="text-xs text-gray-400 mb-1">Giriş yapan:</p>
+                <p className="text-sm font-medium text-white">{userName}</p>
+                {userRole && (
+                  <span className={`inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                    userRole === 'admin' ? 'bg-red-500/20 text-red-300' :
+                    userRole === 'manager' ? 'bg-blue-500/20 text-blue-300' :
+                    'bg-green-500/20 text-green-300'
+                  }`}>
+                    {userRole === 'admin' ? 'Admin' : userRole === 'manager' ? 'Yönetici' : 'Operatör'}
+                  </span>
+                )}
+              </div>
+            )}
         </div>
       </div>
 

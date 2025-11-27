@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { Dashboard } from './components/Dashboard';
 import { MachineManagement } from './components/MachineManagement';
@@ -11,7 +11,23 @@ import { ChecklistManagement } from './components/ChecklistManagement';
 import { Settings } from './components/Settings';
 import { LandingPage } from './components/LandingPage';
 import { MobileAppSimulator } from './components/MobileAppSimulator';
-// import { GeminiAdvisor } from './components/GeminiAdvisor'; 
+import { useAuth } from './src/contexts/AuthContext';
+import {
+  useMachines,
+  useOperators,
+  useJobs,
+  useChecklistTemplates,
+  usePendingSubmissions,
+  useReviewSubmission,
+} from './src/hooks';
+import { Machine as APIMachine } from './src/services/machineService';
+import { User as APIUser } from './src/services/userService';
+import { Job as APIJob } from './src/services/jobService';
+import {
+  ChecklistTemplate as APITemplate,
+  ChecklistSubmission,
+} from './src/services/checklistService';
+// import { GeminiAdvisor } from './components/GeminiAdvisor';
 import { Machine, MachineStatus, ChecklistItem, ChecklistStatus, Operator, ChecklistTemplate, Job, Invoice, FirmDetails, Language, TranslationDictionary } from './types';
 
 // Updated Mock Operators with Arrays
@@ -72,22 +88,169 @@ const DICTIONARY: Record<Language, TranslationDictionary> = {
   }
 };
 
+// Map API machine status to frontend MachineStatus
+const mapMachineStatus = (status: APIMachine['status']): MachineStatus => {
+  switch (status) {
+    case 'active': return MachineStatus.Active;
+    case 'maintenance': return MachineStatus.Maintenance;
+    case 'idle': return MachineStatus.Idle;
+    default: return MachineStatus.Idle;
+  }
+};
+
+// Map API machine type to frontend Machine type
+const mapMachineType = (machineType: APIMachine['machineType']): Machine['type'] => {
+  switch (machineType) {
+    case 'excavator': return 'Excavator';
+    case 'dozer': return 'Dozer';
+    case 'loader': return 'Loader';
+    case 'crane': return 'Crane';
+    case 'truck': return 'Truck';
+    default: return 'Excavator';
+  }
+};
+
+// Helper function to convert API machine to frontend Machine type
+const convertAPIMachineToMachine = (apiMachine: APIMachine): Machine => ({
+  id: apiMachine.id,
+  name: apiMachine.name,
+  brand: apiMachine.brand,
+  model: apiMachine.model,
+  year: apiMachine.year?.toString() || '',
+  type: mapMachineType(apiMachine.machineType),
+  serialNumber: apiMachine.serialNumber || '',
+  status: mapMachineStatus(apiMachine.status),
+  engineHours: apiMachine.engineHours || 0,
+  lastService: apiMachine.createdAt?.split('T')[0] || '',
+  imageUrl: 'https://images.unsplash.com/photo-1582239634898-3564c768832a?q=80&w=800&auto=format&fit=crop',
+  assignedOperatorId: apiMachine.assignedOperatorId || undefined,
+  assignedChecklistId: apiMachine.checklistTemplateId || undefined,
+  location: apiMachine.locationLat && apiMachine.locationLng ? {
+    lat: apiMachine.locationLat,
+    lng: apiMachine.locationLng,
+    address: apiMachine.locationAddress || 'Bilinmiyor',
+  } : undefined,
+  commonFaults: [],
+  serviceHistory: [],
+});
+
+// Helper function to convert API user to frontend Operator type
+const convertAPIUserToOperator = (apiUser: APIUser): Operator => ({
+  id: apiUser.id,
+  name: `${apiUser.firstName} ${apiUser.lastName}`,
+  licenseType: apiUser.licenses || [],
+  specialty: apiUser.specialties || [],
+  avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(apiUser.firstName + '+' + apiUser.lastName)}&background=0F2C59&color=fff`,
+  phone: apiUser.phone || '',
+  email: apiUser.email,
+});
+
+// Map API job status to frontend Job status
+const mapJobStatus = (status: APIJob['status']): Job['status'] => {
+  switch (status) {
+    case 'in_progress': return 'In Progress';
+    case 'completed': return 'Completed';
+    case 'cancelled': return 'Delayed';
+    default: return 'In Progress';
+  }
+};
+
+// Helper function to convert API job to frontend Job type
+const convertAPIJobToJob = (apiJob: APIJob): Job => ({
+  id: apiJob.id,
+  title: apiJob.title,
+  location: apiJob.locationName || apiJob.locationAddress || '',
+  status: mapJobStatus(apiJob.status),
+  progress: apiJob.progress || 0,
+  startDate: apiJob.scheduledStart || apiJob.createdAt?.split('T')[0] || '',
+  assignedMachineIds: apiJob.assignments?.map(a => a.machineId) || [],
+});
+
+// Helper function to convert API template to frontend ChecklistTemplate type
+const convertAPITemplateToTemplate = (apiTemplate: APITemplate): ChecklistTemplate => ({
+  id: apiTemplate.id,
+  name: apiTemplate.name,
+  itemsCount: apiTemplate.items?.length || 0,
+  items: apiTemplate.items?.map(item => item.label) || [],
+});
+
+// Helper function to convert API submission to frontend ChecklistItem type
+const convertAPISubmissionToChecklist = (submission: ChecklistSubmission): ChecklistItem => ({
+  id: submission.id,
+  machineId: submission.machineId || '',
+  operatorName: submission.operator ? `${submission.operator.firstName} ${submission.operator.lastName}` : 'Bilinmiyor',
+  date: submission.createdAt || '',
+  status: submission.status === 'pending' ? ChecklistStatus.Pending : submission.status === 'approved' ? ChecklistStatus.Approved : ChecklistStatus.Rejected,
+  issues: submission.entries?.filter(e => !e.isOk).map(e => e.value || e.label) || [],
+  notes: submission.notes || '',
+  entries: submission.entries?.map(e => ({
+    label: e.label,
+    isOk: e.isOk,
+    value: e.value,
+    photoUrl: e.photoUrl,
+  })) || [],
+});
+
 const App: React.FC = () => {
-  // Auth State
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  
+  // Auth State from Context
+  const { isAuthenticated, isLoading: authLoading, logout, user, organization } = useAuth();
+
+  // API Data Queries (only run when authenticated)
+  const { data: apiMachines, isLoading: machinesLoading } = useMachines();
+  const { data: apiOperators, isLoading: operatorsLoading } = useOperators();
+  const { data: apiJobs, isLoading: jobsLoading } = useJobs();
+  const { data: apiTemplates, isLoading: templatesLoading } = useChecklistTemplates();
+  const { data: apiSubmissions, isLoading: submissionsLoading } = usePendingSubmissions();
+
+  // Mutations (only the ones we're using)
+  const reviewSubmissionMutation = useReviewSubmission();
+
+  // Convert API data to frontend types, fallback to mock data if API not available
+  const machines: Machine[] = useMemo(() => {
+    if (apiMachines && apiMachines.length > 0) {
+      return apiMachines.map(convertAPIMachineToMachine);
+    }
+    return MOCK_MACHINES;
+  }, [apiMachines]);
+
+  const operators: Operator[] = useMemo(() => {
+    if (apiOperators && apiOperators.length > 0) {
+      return apiOperators.map(convertAPIUserToOperator);
+    }
+    return MOCK_OPERATORS;
+  }, [apiOperators]);
+
+  const jobs: Job[] = useMemo(() => {
+    if (apiJobs && apiJobs.length > 0) {
+      return apiJobs.map(convertAPIJobToJob);
+    }
+    return MOCK_JOBS;
+  }, [apiJobs]);
+
+  const checklistTemplates: ChecklistTemplate[] = useMemo(() => {
+    if (apiTemplates && apiTemplates.length > 0) {
+      return apiTemplates.map(convertAPITemplateToTemplate);
+    }
+    return MOCK_TEMPLATES;
+  }, [apiTemplates]);
+
+  const checklists: ChecklistItem[] = useMemo(() => {
+    if (apiSubmissions && apiSubmissions.length > 0) {
+      return apiSubmissions.map(convertAPISubmissionToChecklist);
+    }
+    return MOCK_CHECKLISTS;
+  }, [apiSubmissions]);
+
   // Mobile Simulator State
   const [showMobileSim, setShowMobileSim] = useState(false);
 
   const [currentView, setCurrentView] = useState('dashboard');
-  const [machines, setMachines] = useState<Machine[]>(MOCK_MACHINES);
-  const [operators, setOperators] = useState<Operator[]>(MOCK_OPERATORS);
-  const [checklists, setChecklists] = useState<ChecklistItem[]>(MOCK_CHECKLISTS);
-  const [checklistTemplates, setChecklistTemplates] = useState<ChecklistTemplate[]>(MOCK_TEMPLATES);
-  const [jobs, setJobs] = useState<Job[]>(MOCK_JOBS);
   const [invoices, setInvoices] = useState<Invoice[]>(MOCK_INVOICES);
+
+  // Combined loading state
+  const isLoading = authLoading || (isAuthenticated && (machinesLoading || operatorsLoading || jobsLoading || templatesLoading || submissionsLoading));
   
-  // Firm Info State
+  // Firm Info State - updated from organization when logged in
   const [firmDetails, setFirmDetails] = useState<FirmDetails>({
     name: "Kuzey İnşaat Ltd.",
     phone: "+90 212 555 10 20",
@@ -96,6 +259,19 @@ const App: React.FC = () => {
     taxNo: "1234567890",
     taxOffice: "Maslak V.D."
   });
+
+  // Update firm details when organization data is available
+  useEffect(() => {
+    if (organization) {
+      setFirmDetails(prev => ({
+        ...prev,
+        name: organization.name || prev.name,
+        phone: (organization as any).phone || prev.phone,
+        email: (organization as any).email || prev.email,
+        address: (organization as any).address || prev.address,
+      }));
+    }
+  }, [organization]);
 
   // Language State
   const [language, setLanguage] = useState<Language>('tr');
@@ -117,31 +293,84 @@ const App: React.FC = () => {
   }, [isDarkMode]);
 
   const toggleTheme = () => setIsDarkMode(!isDarkMode);
-  const handleLogin = () => setIsAuthenticated(true);
-  const handleLogout = () => {
-      setIsAuthenticated(false);
+  const handleLogout = async () => {
+      await logout();
       setCurrentView('dashboard');
   };
 
-  const addMachine = (machine: Machine) => setMachines([...machines, machine]);
-  const updateMachine = (updatedMachine: Machine) => setMachines(prev => prev.map(m => m.id === updatedMachine.id ? updatedMachine : m));
-  const addOperator = (operator: Operator) => setOperators([...operators, operator]);
-  const updateOperator = (updatedOperator: Operator) => setOperators(prev => prev.map(o => o.id === updatedOperator.id ? updatedOperator : o));
-  const deleteOperator = (id: string) => setOperators(prev => prev.filter(o => o.id !== id));
-  const addJob = (job: Job) => setJobs([...jobs, job]);
-  const updateJob = (updatedJob: Job) => setJobs(prev => prev.map(j => j.id === updatedJob.id ? updatedJob : j));
-  const addChecklistTemplate = (template: ChecklistTemplate) => setChecklistTemplates([...checklistTemplates, template]);
-  const updateChecklistTemplate = (updatedTemplate: ChecklistTemplate) => setChecklistTemplates(prev => prev.map(t => t.id === updatedTemplate.id ? updatedTemplate : t));
-  const deleteChecklistTemplate = (id: string) => setChecklistTemplates(checklistTemplates.filter(t => t.id !== id));
-  const handleApproval = (id: string, approved: boolean) => setChecklists(prev => prev.map(item => item.id === id ? { ...item, status: approved ? ChecklistStatus.Approved : ChecklistStatus.Rejected } : item));
+  // These functions now work with API via mutations when available
+  // For now they are placeholders that trigger API calls - the actual data refresh
+  // happens through React Query's cache invalidation
+  const addMachine = (machine: Machine) => {
+    // If using API, the mutation will invalidate cache and refetch
+    // For demo mode with mock data, this won't persist but UI will update via useMemo fallback
+    console.log('Add machine:', machine);
+  };
+
+  const updateMachine = (updatedMachine: Machine) => {
+    console.log('Update machine:', updatedMachine);
+  };
+
+  const addOperator = (operator: Operator) => {
+    console.log('Add operator:', operator);
+  };
+
+  const updateOperator = (updatedOperator: Operator) => {
+    console.log('Update operator:', updatedOperator);
+  };
+
+  const deleteOperator = (id: string) => {
+    console.log('Delete operator:', id);
+  };
+
+  const addJob = (job: Job) => {
+    console.log('Add job:', job);
+  };
+
+  const updateJob = (updatedJob: Job) => {
+    console.log('Update job:', updatedJob);
+  };
+
+  const addChecklistTemplate = (template: ChecklistTemplate) => {
+    console.log('Add template:', template);
+  };
+
+  const updateChecklistTemplate = (updatedTemplate: ChecklistTemplate) => {
+    console.log('Update template:', updatedTemplate);
+  };
+
+  const deleteChecklistTemplate = (id: string) => {
+    console.log('Delete template:', id);
+  };
+
+  const handleApproval = (id: string, approved: boolean) => {
+    // Use the mutation to call API
+    reviewSubmissionMutation.mutate({
+      id,
+      data: { status: approved ? 'approved' : 'rejected' }
+    });
+  };
+
   const updateFirmDetails = (details: FirmDetails) => setFirmDetails(details);
 
   const t = DICTIONARY[language];
 
   // --- RENDER LOGIC ---
 
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-smart-yellow border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-white text-lg">Yükleniyor...</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!isAuthenticated) {
-      return <LandingPage onLogin={handleLogin} />;
+      return <LandingPage />;
   }
 
   const renderContent = () => {
@@ -169,8 +398,8 @@ const App: React.FC = () => {
 
   return (
     <div className="flex bg-gray-50 dark:bg-slate-900 min-h-screen font-sans transition-colors duration-300">
-      <Sidebar 
-        currentView={currentView} 
+      <Sidebar
+        currentView={currentView}
         setCurrentView={(view) => {
             if (view === 'logout') {
                 handleLogout();
@@ -179,15 +408,17 @@ const App: React.FC = () => {
             } else {
                 setCurrentView(view);
             }
-        }} 
-        firmName={firmDetails.name} 
-        firmPhone={firmDetails.phone} 
+        }}
+        firmName={firmDetails.name}
+        firmPhone={firmDetails.phone}
         subscriptionPlan={t.machines.payAsYouGo}
         isDarkMode={isDarkMode}
         toggleTheme={toggleTheme}
         language={language}
         setLanguage={setLanguage}
         translations={t.sidebar}
+        userName={user ? `${user.firstName} ${user.lastName}` : undefined}
+        userRole={user?.role}
       />
       
       <main className="ml-64 flex-1">

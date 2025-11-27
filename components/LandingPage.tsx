@@ -1,14 +1,40 @@
 
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import { ChevronRight, CheckCircle, TrendingUp, Shield, Smartphone, ArrowRight, Activity, Zap, BarChart3, Globe } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ChevronRight, CheckCircle, TrendingUp, Shield, Smartphone, ArrowRight, Activity, Zap, BarChart3, Globe, X, Loader2, AlertCircle } from 'lucide-react';
+import { useAuth } from '../src/contexts/AuthContext';
 
 interface LandingPageProps {
-  onLogin: () => void;
+  onLogin?: () => void;
 }
 
 export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
+  const { login, isLoading } = useAuth();
   const [machineCount, setMachineCount] = useState(15);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+
+    try {
+      await login(email, password);
+      setShowLoginModal(false);
+      if (onLogin) onLogin();
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Giriş başarısız. Lütfen bilgilerinizi kontrol edin.');
+    }
+  };
+
+  const openLoginModal = () => {
+    setShowLoginModal(true);
+    // Pre-fill with demo credentials
+    setEmail('admin@demo-insaat.com');
+    setPassword('Admin123!');
+  };
   
   // ROI Calculator Logic
   const monthlyCostPaper = machineCount * 450; // Paper forms, lost time, manual entry cost approx
@@ -31,8 +57,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
             <a href="#roi" className="hover:text-white transition-colors">Hesaplama</a>
             <a href="#pricing" className="hover:text-white transition-colors">Fiyatlandırma</a>
           </div>
-          <button 
-            onClick={onLogin}
+          <button
+            onClick={openLoginModal}
             className="bg-white/10 hover:bg-white/20 border border-white/20 text-white px-6 py-2 rounded-full font-bold transition-all flex items-center gap-2"
           >
             Portal Girişi <ArrowRight size={16} />
@@ -64,8 +90,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
               Arızaları %40 azaltın, verimliliği artırın.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-              <button 
-                onClick={onLogin}
+              <button
+                onClick={openLoginModal}
                 className="bg-smart-yellow text-smart-navy px-8 py-4 rounded-xl font-bold text-lg hover:bg-yellow-400 hover:scale-105 transition-all shadow-xl shadow-yellow-500/20 flex items-center gap-2"
               >
                 Ücretsiz Başlayın <ChevronRight />
@@ -201,8 +227,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
            <p className="text-blue-100 text-lg mb-10 max-w-2xl mx-auto relative z-10">
              Kredi kartı gerekmeden 14 gün boyunca tüm özellikleri ücretsiz deneyin.
            </p>
-           <button 
-             onClick={onLogin}
+           <button
+             onClick={openLoginModal}
              className="bg-smart-yellow text-smart-navy px-10 py-4 rounded-xl font-bold text-xl hover:bg-yellow-400 hover:scale-105 transition-all shadow-xl relative z-10"
            >
              Hemen Kayıt Olun
@@ -225,6 +251,107 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
           <p>© 2024 Smartop Inc. Tüm hakları saklıdır.</p>
         </div>
       </footer>
+
+      {/* Login Modal */}
+      <AnimatePresence>
+        {showLoginModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setShowLoginModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-slate-800 rounded-2xl shadow-2xl max-w-md w-full p-8 border border-white/10"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex justify-between items-center mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-smart-yellow rounded-lg flex items-center justify-center">
+                    <Activity className="text-smart-navy w-6 h-6" />
+                  </div>
+                  <h2 className="text-2xl font-bold text-white">Portal Girişi</h2>
+                </div>
+                <button
+                  onClick={() => setShowLoginModal(false)}
+                  className="text-gray-400 hover:text-white transition-colors"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+
+              {error && (
+                <div className="mb-4 p-3 bg-red-500/20 border border-red-500/30 rounded-lg flex items-center gap-2 text-red-300">
+                  <AlertCircle size={18} />
+                  <span className="text-sm">{error}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleLogin} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">E-posta</label>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full px-4 py-3 bg-slate-900 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-smart-yellow focus:border-transparent transition-all"
+                    placeholder="ornek@firma.com"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Şifre</label>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full px-4 py-3 bg-slate-900 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-smart-yellow focus:border-transparent transition-all"
+                    placeholder="••••••••"
+                    required
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full bg-smart-yellow text-smart-navy py-3 rounded-xl font-bold text-lg hover:bg-yellow-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="animate-spin" size={20} />
+                      Giriş yapılıyor...
+                    </>
+                  ) : (
+                    'Giriş Yap'
+                  )}
+                </button>
+              </form>
+
+              <div className="mt-6 pt-6 border-t border-white/10">
+                <p className="text-center text-gray-400 text-sm mb-3">Demo Hesapları:</p>
+                <div className="space-y-2 text-xs text-gray-500">
+                  <div className="flex justify-between bg-slate-900/50 px-3 py-2 rounded-lg">
+                    <span>Admin:</span>
+                    <span className="text-gray-300">admin@demo-insaat.com / Admin123!</span>
+                  </div>
+                  <div className="flex justify-between bg-slate-900/50 px-3 py-2 rounded-lg">
+                    <span>Manager:</span>
+                    <span className="text-gray-300">manager@demo-insaat.com / Manager123!</span>
+                  </div>
+                  <div className="flex justify-between bg-slate-900/50 px-3 py-2 rounded-lg">
+                    <span>Operator:</span>
+                    <span className="text-gray-300">operator1@demo-insaat.com / Operator123!</span>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

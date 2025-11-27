@@ -1,0 +1,197 @@
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+  ForbiddenException,
+} from '@nestjs/common';
+import * as bcrypt from 'bcryptjs';
+import { PrismaService } from '../../common/prisma/prisma.service';
+import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
+import { QueryUsersDto } from './dto/query-users.dto';
+
+@Injectable()
+export class UsersService {
+  constructor(private prisma: PrismaService) {}
+
+  async create(dto: CreateUserDto, organizationId: string, creatorRole: string) {
+    // Only admins can create users
+    if (creatorRole !== 'admin') {
+      throw new ForbiddenException('Only admins can create users');
+    }
+
+    // Check if email exists in organization
+    const existingUser = await this.prisma.user.findFirst({
+      where: { organizationId, email: dto.email },
+    });
+
+    if (existingUser) {
+      throw new ConflictException('Email already exists in this organization');
+    }
+
+    const passwordHash = await bcrypt.hash(dto.password, 12);
+
+    const user = await this.prisma.user.create({
+      data: {
+        organizationId,
+        email: dto.email,
+        passwordHash,
+        firstName: dto.firstName,
+        lastName: dto.lastName,
+        role: dto.role || 'operator',
+        phone: dto.phone,
+        jobTitle: dto.jobTitle,
+        licenses: dto.licenses || [],
+        specialties: dto.specialties || [],
+      },
+    });
+
+    return this.sanitizeUser(user);
+  }
+
+  async findAll(organizationId: string, query: QueryUsersDto) {
+    const { search, role, isActive, page = 1, limit = 20, sortBy = 'createdAt', sortOrder = 'desc' } = query;
+
+    const where: any = { organizationId };
+
+    if (search) {
+      where.OR = [
+        { firstName: { contains: search, mode: 'insensitive' } },
+        { lastName: { contains: search, mode: 'insensitive' } },
+        { email: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    if (role) {
+      where.role = role;
+    }
+
+    if (isActive !== undefined) {
+      where.isActive = isActive === 'true';
+    }
+
+    const [users, total] = await Promise.all([
+      this.prisma.user.findMany({
+        where,
+        skip: (page - 1) * limit,
+        take: limit,
+        orderBy: { [sortBy]: sortOrder },
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          role: true,
+          phone: true,
+          avatarUrl: true,
+          jobTitle: true,
+          licenses: true,
+          specialties: true,
+          isActive: true,
+          lastLoginAt: true,
+          createdAt: true,
+        },
+      }),
+      this.prisma.user.count({ where }),
+    ]);
+
+    return {
+      data: users,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  async findOne(id: string, organizationId: string) {
+    const user = await this.prisma.user.findFirst({
+      where: { id, organizationId },
+      include: {
+        assignedMachines: {
+          select: { id: true, name: true, machineType: true, status: true },
+        },
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    return this.sanitizeUser(user);
+  }
+
+  async update(
+    id: string,
+    dto: UpdateUserDto,
+    organizationId: string,
+    requestingUserId: string,
+    requestingUserRole: string,
+  ) {
+    const user = await this.prisma.user.findFirst({
+      where: { id, organizationId },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Users can update their own profile (limited fields)
+    // Admins can update any user
+    if (requestingUserId !== id && requestingUserRole !== 'admin') {
+      throw new ForbiddenException('Only admins can update other users');
+    }
+
+    // Non-admins can only update certain fields
+    if (requestingUserRole !== 'admin') {
+      const allowedFields = ['firstName', 'lastName', 'phone', 'avatarUrl'];
+      const updateData: any = {};
+      for (const field of allowedFields) {
+        if ((dto as any)[field] !== undefined) {
+          updateData[field] = (dto as any)[field];
+        }
+      }
+      const updatedUser = await this.prisma.user.update({
+        where: { id },
+        data: updateData,
+      });
+      return this.sanitizeUser(updatedUser);
+    }
+
+    const updatedUser = await this.prisma.user.update({
+      where: { id },
+      data: dto,
+    });
+
+    return this.sanitizeUser(updatedUser);
+  }
+
+  async remove(id: string, organizationId: string, requestingUserRole: string) {
+    if (requestingUserRole !== 'admin') {
+      throw new ForbiddenException('Only admins can delete users');
+    }
+
+    const user = await this.prisma.user.findFirst({
+      where: { id, organizationId },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Soft delete - just deactivate
+    await this.prisma.user.update({
+      where: { id },
+      data: { isActive: false },
+    });
+
+    return { message: 'User deactivated successfully' };
+  }
+
+  private sanitizeUser(user: any) {
+    const { passwordHash, ...sanitized } = user;
+    return sanitized;
+  }
+}
