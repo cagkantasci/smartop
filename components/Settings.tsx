@@ -1,0 +1,353 @@
+
+import React, { useState, useEffect } from 'react';
+import { User, Building2, Bell, Lock, Save, Camera, Mail, Shield, Smartphone, Globe, Moon, Sun, Loader2, CheckCircle } from 'lucide-react';
+import { FirmDetails, Language, TranslationDictionary } from '../types';
+
+interface SettingsProps {
+  firmDetails: FirmDetails;
+  updateFirmDetails: (details: FirmDetails) => void;
+  isDarkMode: boolean;
+  toggleTheme?: () => void;
+  language?: Language;
+  setLanguage?: (lang: Language) => void;
+  t: TranslationDictionary['settings'];
+}
+
+type TabType = 'profile' | 'company' | 'notifications' | 'security';
+
+export const Settings: React.FC<SettingsProps> = ({ firmDetails, updateFirmDetails, isDarkMode, toggleTheme, language, setLanguage, t }) => {
+  const [activeTab, setActiveTab] = useState<TabType>('profile');
+  const [isLoading, setIsLoading] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+
+  // Form States
+  const [profileData, setProfileData] = useState({
+    fullName: 'Ahmet Yılmaz',
+    email: 'ahmet@kuzeyinsaat.com.tr',
+    title: 'Operasyon Müdürü'
+  });
+
+  // Local state for form editing, initialized with props
+  const [companyData, setCompanyData] = useState<FirmDetails>(firmDetails);
+
+  // Sync local state if props change (optional, but good practice)
+  useEffect(() => {
+    setCompanyData(firmDetails);
+  }, [firmDetails]);
+
+  const [notifications, setNotifications] = useState({
+    emailAlerts: true,
+    pushNotifications: true,
+    weeklyReport: true,
+    maintenanceAlert: true,
+    marketing: false
+  });
+
+  const handleSave = () => {
+    setIsLoading(true);
+    // Simulate API Call
+    setTimeout(() => {
+      if (activeTab === 'company') {
+        updateFirmDetails(companyData);
+      }
+      setIsLoading(false);
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 3000);
+    }, 1000);
+  };
+
+  const tabs = [
+    { id: 'profile', label: t.tabs.profile, icon: User },
+    { id: 'company', label: t.tabs.company, icon: Building2 },
+    { id: 'notifications', label: t.tabs.notifications, icon: Bell },
+    { id: 'security', label: t.tabs.security, icon: Lock },
+  ];
+
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'profile':
+        return (
+          <div className="space-y-6 animate-fadeIn">
+            <div className="flex items-center gap-6 pb-6 border-b border-gray-100 dark:border-slate-700">
+              <div className="relative group cursor-pointer">
+                <div className="w-24 h-24 rounded-full bg-gray-200 dark:bg-slate-700 flex items-center justify-center overflow-hidden border-4 border-white dark:border-slate-800 shadow-lg">
+                  <User size={40} className="text-gray-400" />
+                </div>
+                <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Camera className="text-white" size={24} />
+                </div>
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-smart-navy dark:text-white">Profil Fotoğrafı</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400">PNG, JPG formatında max 2MB.</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-bold text-smart-navy dark:text-gray-300 mb-2">{t.labels.fullName}</label>
+                <input 
+                  type="text" 
+                  value={profileData.fullName}
+                  onChange={(e) => setProfileData({...profileData, fullName: e.target.value})}
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-smart-navy/20 outline-none bg-white text-gray-900 dark:bg-slate-700 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-smart-navy dark:text-gray-300 mb-2">{t.labels.title}</label>
+                <input 
+                  type="text" 
+                  value={profileData.title}
+                  onChange={(e) => setProfileData({...profileData, title: e.target.value})}
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-smart-navy/20 outline-none bg-white text-gray-900 dark:bg-slate-700 dark:text-white"
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-sm font-bold text-smart-navy dark:text-gray-300 mb-2">{t.labels.email}</label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                  <input 
+                    type="email" 
+                    value={profileData.email}
+                    onChange={(e) => setProfileData({...profileData, email: e.target.value})}
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-smart-navy/20 outline-none bg-white text-gray-900 dark:bg-slate-700 dark:text-white"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-6 border-t border-gray-100 dark:border-slate-700">
+               <h3 className="text-lg font-bold text-smart-navy dark:text-white mb-4">Uygulama Tercihleri</h3>
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                 <div>
+                    <label className="block text-sm font-bold text-smart-navy dark:text-gray-300 mb-2">{t.labels.language}</label>
+                    <div className="relative">
+                      <Globe className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                      <select 
+                        value={language}
+                        onChange={(e) => setLanguage && setLanguage(e.target.value as Language)}
+                        className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-smart-navy/20 outline-none bg-white text-gray-900 dark:bg-slate-700 dark:text-white appearance-none"
+                      >
+                        <option value="tr">Türkçe</option>
+                        <option value="en">English</option>
+                      </select>
+                    </div>
+                 </div>
+                 
+                 {toggleTheme && (
+                   <div>
+                      <label className="block text-sm font-bold text-smart-navy dark:text-gray-300 mb-2">{t.labels.theme}</label>
+                      <button 
+                        onClick={toggleTheme}
+                        className="w-full px-4 py-3 border border-gray-300 dark:border-slate-600 rounded-lg flex items-center justify-between hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors bg-white dark:bg-slate-700 dark:text-white"
+                      >
+                        <span className="flex items-center gap-2">
+                          {isDarkMode ? <Moon size={18} /> : <Sun size={18} />}
+                          {isDarkMode ? 'Karanlık Mod' : 'Aydınlık Mod'}
+                        </span>
+                        <div className={`w-10 h-5 rounded-full relative transition-colors ${isDarkMode ? 'bg-smart-yellow' : 'bg-gray-300'}`}>
+                            <div className={`absolute top-1 w-3 h-3 rounded-full bg-white transition-all ${isDarkMode ? 'left-6' : 'left-1'}`}></div>
+                        </div>
+                      </button>
+                   </div>
+                 )}
+               </div>
+            </div>
+          </div>
+        );
+
+      case 'company':
+        return (
+          <div className="space-y-6 animate-fadeIn">
+            <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-100 dark:border-blue-800 flex items-start gap-3">
+              <Building2 className="text-smart-navy dark:text-blue-300 mt-1" />
+              <div>
+                <h4 className="font-bold text-smart-navy dark:text-white text-sm">Firma Bilgileri Önemlidir</h4>
+                <p className="text-xs text-gray-600 dark:text-gray-300 mt-1">Bu bilgiler faturalarınızda ve operatörlerinizin ekranında görünecektir.</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="col-span-2">
+                <label className="block text-sm font-bold text-smart-navy dark:text-gray-300 mb-2">{t.labels.firmName}</label>
+                <input 
+                  type="text" 
+                  value={companyData.name}
+                  onChange={(e) => setCompanyData({...companyData, name: e.target.value})}
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-smart-navy/20 outline-none bg-white text-gray-900 dark:bg-slate-700 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-smart-navy dark:text-gray-300 mb-2">{t.labels.taxNo}</label>
+                <input 
+                  type="text" 
+                  value={companyData.taxNo}
+                  onChange={(e) => setCompanyData({...companyData, taxNo: e.target.value})}
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-smart-navy/20 outline-none bg-white text-gray-900 dark:bg-slate-700 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-smart-navy dark:text-gray-300 mb-2">{t.labels.taxOffice}</label>
+                <input 
+                  type="text" 
+                  value={companyData.taxOffice}
+                  onChange={(e) => setCompanyData({...companyData, taxOffice: e.target.value})}
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-smart-navy/20 outline-none bg-white text-gray-900 dark:bg-slate-700 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-smart-navy dark:text-gray-300 mb-2">{t.labels.phone}</label>
+                <input 
+                  type="text" 
+                  value={companyData.phone}
+                  onChange={(e) => setCompanyData({...companyData, phone: e.target.value})}
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-smart-navy/20 outline-none bg-white text-gray-900 dark:bg-slate-700 dark:text-white"
+                />
+              </div>
+              <div className="col-span-2">
+                <label className="block text-sm font-bold text-smart-navy dark:text-gray-300 mb-2">{t.labels.address}</label>
+                <textarea 
+                  rows={3}
+                  value={companyData.address}
+                  onChange={(e) => setCompanyData({...companyData, address: e.target.value})}
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-smart-navy/20 outline-none bg-white text-gray-900 dark:bg-slate-700 dark:text-white resize-none"
+                />
+              </div>
+            </div>
+          </div>
+        );
+
+      case 'notifications':
+        return (
+          <div className="space-y-6 animate-fadeIn">
+            {[
+              { id: 'emailAlerts', label: 'E-posta Bildirimleri', desc: 'Önemli güncellemeleri e-posta ile al.' },
+              { id: 'pushNotifications', label: 'Anlık Bildirimler (Push)', desc: 'Tarayıcı üzerinden anlık uyarılar.' },
+              { id: 'maintenanceAlert', label: 'Bakım Uyarıları', desc: 'Makine bakım zamanı geldiğinde uyar.', important: true },
+              { id: 'weeklyReport', label: 'Haftalık Rapor', desc: 'Her Pazartesi haftalık özet raporu gönder.' },
+              { id: 'marketing', label: 'Kampanya ve Duyurular', desc: 'Yeni özellikler ve indirimlerden haberdar ol.' },
+            ].map((item) => (
+              <div key={item.id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-slate-700 rounded-lg border border-gray-100 dark:border-slate-600">
+                <div className="flex items-center gap-3">
+                   {item.important && <Bell className="text-smart-yellow" size={20} />}
+                   <div>
+                     <h4 className="font-bold text-smart-navy dark:text-white">{item.label}</h4>
+                     <p className="text-xs text-gray-500 dark:text-gray-400">{item.desc}</p>
+                   </div>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    checked={(notifications as any)[item.id]} 
+                    onChange={() => setNotifications({...notifications, [item.id]: !(notifications as any)[item.id]})}
+                    className="sr-only peer" 
+                  />
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-smart-navy"></div>
+                </label>
+              </div>
+            ))}
+          </div>
+        );
+      
+      case 'security':
+        return (
+          <div className="space-y-6 animate-fadeIn">
+             <div className="p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800 flex items-start gap-3">
+               <Shield className="text-orange-600 dark:text-orange-400 mt-1" />
+               <div>
+                  <h4 className="font-bold text-orange-800 dark:text-orange-300">Hesap Güvenliği</h4>
+                  <p className="text-xs text-orange-700 dark:text-orange-400 mt-1">Şifrenizi düzenli olarak değiştirmeniz önerilir.</p>
+               </div>
+             </div>
+
+             <div className="space-y-4">
+                <div>
+                   <label className="block text-sm font-bold text-smart-navy dark:text-gray-300 mb-2">Mevcut Şifre</label>
+                   <input type="password" className="w-full px-4 py-3 border border-gray-300 dark:border-slate-600 rounded-lg bg-white text-gray-900 dark:bg-slate-700 dark:text-white" />
+                </div>
+                <div>
+                   <label className="block text-sm font-bold text-smart-navy dark:text-gray-300 mb-2">Yeni Şifre</label>
+                   <input type="password" className="w-full px-4 py-3 border border-gray-300 dark:border-slate-600 rounded-lg bg-white text-gray-900 dark:bg-slate-700 dark:text-white" />
+                </div>
+                <div>
+                   <label className="block text-sm font-bold text-smart-navy dark:text-gray-300 mb-2">Yeni Şifre (Tekrar)</label>
+                   <input type="password" className="w-full px-4 py-3 border border-gray-300 dark:border-slate-600 rounded-lg bg-white text-gray-900 dark:bg-slate-700 dark:text-white" />
+                </div>
+             </div>
+
+             <div className="pt-6 border-t border-gray-100 dark:border-slate-700">
+                <div className="flex items-center justify-between">
+                   <div>
+                      <h4 className="font-bold text-smart-navy dark:text-white flex items-center gap-2">
+                        <Smartphone size={18} /> İki Faktörlü Doğrulama (2FA)
+                      </h4>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Giriş yaparken telefonunuza kod gönderilir.</p>
+                   </div>
+                   <button className="px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg text-sm font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700 bg-white dark:bg-slate-700">
+                      Aktifleştir
+                   </button>
+                </div>
+             </div>
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <div className="p-8">
+      <div className="mb-8 flex justify-between items-center">
+        <div>
+           <h2 className="text-3xl font-bold text-smart-navy dark:text-white flex items-center gap-3">
+             <User className="text-smart-yellow" />
+             {t.title}
+           </h2>
+           <p className="text-gray-500 dark:text-gray-400 mt-1">{t.subtitle}</p>
+        </div>
+        
+        {showSuccess && (
+          <div className="flex items-center gap-2 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 px-4 py-2 rounded-lg animate-bounce">
+            <CheckCircle size={18} /> {t.saved}
+          </div>
+        )}
+      </div>
+
+      <div className="flex flex-col lg:flex-row gap-8">
+        {/* Sidebar Tabs */}
+        <div className="w-full lg:w-64 flex flex-col gap-2">
+          {tabs.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as TabType)}
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all text-left ${
+                activeTab === tab.id 
+                  ? 'bg-smart-navy dark:bg-white text-white dark:text-smart-navy shadow-md' 
+                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-800'
+              }`}
+            >
+              <tab.icon size={20} />
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Content Area */}
+        <div className="flex-1 bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 p-8">
+          {renderContent()}
+
+          <div className="mt-8 pt-6 border-t border-gray-100 dark:border-slate-700 flex justify-end">
+            <button 
+              onClick={handleSave}
+              disabled={isLoading}
+              className="bg-smart-navy dark:bg-black text-white px-8 py-3 rounded-lg font-bold hover:bg-blue-900 dark:hover:bg-gray-900 transition-colors shadow-lg flex items-center gap-2 disabled:opacity-70"
+            >
+              {isLoading ? <Loader2 className="animate-spin" size={20} /> : <Save size={20} />}
+              {t.save}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
