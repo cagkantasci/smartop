@@ -1,0 +1,219 @@
+import axios, { AxiosInstance, InternalAxiosRequestConfig } from 'axios';
+import * as SecureStore from 'expo-secure-store';
+
+const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.0.23:3000/api/v1';
+
+// Create axios instance
+const api: AxiosInstance = axios.create({
+  baseURL: API_URL,
+  timeout: 10000,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Token storage keys
+const ACCESS_TOKEN_KEY = 'accessToken';
+const REFRESH_TOKEN_KEY = 'refreshToken';
+
+// Token management
+export const tokenStorage = {
+  async getAccessToken(): Promise<string | null> {
+    return await SecureStore.getItemAsync(ACCESS_TOKEN_KEY);
+  },
+
+  async setAccessToken(token: string): Promise<void> {
+    await SecureStore.setItemAsync(ACCESS_TOKEN_KEY, token);
+  },
+
+  async getRefreshToken(): Promise<string | null> {
+    return await SecureStore.getItemAsync(REFRESH_TOKEN_KEY);
+  },
+
+  async setRefreshToken(token: string): Promise<void> {
+    await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, token);
+  },
+
+  async clearTokens(): Promise<void> {
+    await SecureStore.deleteItemAsync(ACCESS_TOKEN_KEY);
+    await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY);
+  },
+
+  async setTokens(accessToken: string, refreshToken: string): Promise<void> {
+    await this.setAccessToken(accessToken);
+    await this.setRefreshToken(refreshToken);
+  },
+};
+
+// Request interceptor - add auth token
+api.interceptors.request.use(
+  async (config: InternalAxiosRequestConfig) => {
+    const token = await tokenStorage.getAccessToken();
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// Response interceptor - handle token refresh
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
+
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+
+      try {
+        const refreshToken = await tokenStorage.getRefreshToken();
+        if (!refreshToken) {
+          throw new Error('No refresh token');
+        }
+
+        const response = await axios.post(`${API_URL}/auth/refresh`, {
+          refreshToken,
+        });
+
+        const { accessToken, refreshToken: newRefreshToken } = response.data;
+        await tokenStorage.setTokens(accessToken, newRefreshToken);
+
+        originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+        return api(originalRequest);
+      } catch (refreshError) {
+        await tokenStorage.clearTokens();
+        // Navigate to login - will be handled by auth context
+        return Promise.reject(refreshError);
+      }
+    }
+
+    return Promise.reject(error);
+  }
+);
+
+// Auth API
+export const authApi = {
+  login: async (email: string, password: string) => {
+    const response = await api.post('/auth/login', { email, password });
+    return response.data;
+  },
+
+  logout: async () => {
+    const refreshToken = await tokenStorage.getRefreshToken();
+    await api.post('/auth/logout', { refreshToken });
+  },
+
+  getMe: async () => {
+    const response = await api.get('/auth/me');
+    return response.data;
+  },
+};
+
+// Machines API
+export const machinesApi = {
+  getAll: async (params?: { status?: string; type?: string; limit?: number }) => {
+    const response = await api.get('/machines', { params });
+    return response.data;
+  },
+
+  getById: async (id: string) => {
+    const response = await api.get(`/machines/${id}`);
+    return response.data;
+  },
+
+  updateLocation: async (id: string, lat: number, lng: number) => {
+    const response = await api.patch(`/machines/${id}/location`, { lat, lng });
+    return response.data;
+  },
+};
+
+// Checklists API
+export const checklistsApi = {
+  getTemplates: async () => {
+    const response = await api.get('/checklists/templates');
+    return response.data;
+  },
+
+  getTemplateById: async (id: string) => {
+    const response = await api.get(`/checklists/templates/${id}`);
+    return response.data;
+  },
+
+  getSubmissions: async (params?: { status?: string; machineId?: string }) => {
+    const response = await api.get('/checklists/submissions', { params });
+    return response.data;
+  },
+
+  getSubmissionById: async (id: string) => {
+    const response = await api.get(`/checklists/submissions/${id}`);
+    return response.data;
+  },
+
+  submitChecklist: async (data: {
+    machineId: string;
+    templateId: string;
+    entries: Array<{ itemId: string; isOk: boolean; value?: string; photoUrl?: string }>;
+    notes?: string;
+    locationLat?: number;
+    locationLng?: number;
+  }) => {
+    const response = await api.post('/checklists/submissions', data);
+    return response.data;
+  },
+
+  reviewSubmission: async (id: string, status: 'approved' | 'rejected', notes?: string) => {
+    const response = await api.patch(`/checklists/submissions/${id}/review`, {
+      status,
+      notes,
+    });
+    return response.data;
+  },
+
+  submit: async (data: {
+    machineId: string;
+    templateId: string;
+    items: Array<{ itemId: string; checked: boolean; notes?: string; hasIssue?: boolean }>;
+  }) => {
+    const response = await api.post('/checklists/submissions', data);
+    return response.data;
+  },
+};
+
+// Jobs API
+export const jobsApi = {
+  getAll: async (params?: { status?: string; priority?: string; limit?: number }) => {
+    const response = await api.get('/jobs', { params });
+    return response.data;
+  },
+
+  getById: async (id: string) => {
+    const response = await api.get(`/jobs/${id}`);
+    return response.data;
+  },
+
+  start: async (id: string) => {
+    const response = await api.patch(`/jobs/${id}/start`);
+    return response.data;
+  },
+
+  complete: async (id: string) => {
+    const response = await api.patch(`/jobs/${id}/complete`);
+    return response.data;
+  },
+};
+
+// Users API
+export const usersApi = {
+  getAll: async (params?: { role?: string }) => {
+    const response = await api.get('/users', { params });
+    return response.data;
+  },
+
+  getById: async (id: string) => {
+    const response = await api.get(`/users/${id}`);
+    return response.data;
+  },
+};
+
+export default api;
