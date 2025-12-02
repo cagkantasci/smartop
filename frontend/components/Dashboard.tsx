@@ -1,9 +1,66 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
-import { AlertTriangle, CheckCircle, Clock, TrendingUp, Activity, MapPin, Wrench, Calendar, ChevronRight, ArrowLeft, Building2, User, Filter } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Clock, TrendingUp, Activity, MapPin, Wrench, Calendar, ChevronRight, ArrowLeft, Building2, User, Filter, Map, Navigation } from 'lucide-react';
 import { Machine, ChecklistItem, ChecklistStatus, MachineStatus, Job, TranslationDictionary } from '../types';
 import { ApprovalWorkflow } from './ApprovalWorkflow';
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+
+// Fix for default marker icons in Leaflet
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+});
+
+// Custom icons for jobs and machines
+const jobIcon = new L.Icon({
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41]
+});
+
+const activeMachineIcon = new L.Icon({
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41]
+});
+
+const idleMachineIcon = new L.Icon({
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-gold.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41]
+});
+
+const maintenanceMachineIcon = new L.Icon({
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41]
+});
+
+// Map center adjuster component
+const MapController: React.FC<{ center: [number, number]; zoom: number }> = ({ center, zoom }) => {
+  const map = useMap();
+  useEffect(() => {
+    map.setView(center, zoom);
+  }, [center, zoom, map]);
+  return null;
+};
 
 interface DashboardProps {
   machines: Machine[];
@@ -311,6 +368,123 @@ export const Dashboard: React.FC<DashboardProps> = ({ machines, checklists, jobs
             <p className="text-sm text-gray-500 dark:text-gray-400">{t.avgUsage}</p>
             <p className="text-2xl font-bold text-gray-900 dark:text-white">%85</p>
           </div>
+        </div>
+      </div>
+
+      {/* Live Map Widget */}
+      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 overflow-hidden">
+        <div className="p-4 border-b border-gray-100 dark:border-slate-700 flex justify-between items-center">
+          <h3 className="text-lg font-bold text-smart-navy dark:text-white flex items-center gap-2">
+            <Map size={20} className="text-blue-500" />
+            Canlı Harita - Makine ve İş Konumları
+          </h3>
+          <div className="flex items-center gap-4 text-xs">
+            <div className="flex items-center gap-1">
+              <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+              <span className="text-gray-500 dark:text-gray-400">İş Konumu</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-3 h-3 rounded-full bg-green-500"></div>
+              <span className="text-gray-500 dark:text-gray-400">Aktif Makine</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+              <span className="text-gray-500 dark:text-gray-400">Boşta</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-3 h-3 rounded-full bg-red-500"></div>
+              <span className="text-gray-500 dark:text-gray-400">Bakımda</span>
+            </div>
+          </div>
+        </div>
+        <div className="h-80">
+          <MapContainer
+            center={[39.9334, 32.8597]}
+            zoom={6}
+            style={{ height: '100%', width: '100%' }}
+            scrollWheelZoom={true}
+          >
+            <TileLayer
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            />
+
+            {/* Job Markers */}
+            {jobs.filter(job => job.coordinates).map(job => (
+              <Marker
+                key={`job-${job.id}`}
+                position={[job.coordinates!.lat, job.coordinates!.lng]}
+                icon={jobIcon}
+              >
+                <Popup>
+                  <div className="p-1 min-w-[200px]">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Building2 size={16} className="text-blue-600" />
+                      <h4 className="font-bold text-smart-navy">{job.title}</h4>
+                    </div>
+                    <p className="text-xs text-gray-500 mb-2">{job.location}</p>
+                    <div className="flex justify-between items-center">
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                        job.status === 'In Progress' ? 'bg-blue-100 text-blue-800' :
+                        job.status === 'Delayed' ? 'bg-orange-100 text-orange-800' : 'bg-green-100 text-green-800'
+                      }`}>
+                        {job.status === 'In Progress' ? 'Devam Ediyor' : job.status === 'Delayed' ? 'Gecikmede' : 'Tamamlandı'}
+                      </span>
+                      <span className="text-xs font-bold text-gray-600">{job.progress}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-1.5 mt-2">
+                      <div className={`h-1.5 rounded-full ${job.status === 'Delayed' ? 'bg-orange-500' : 'bg-blue-500'}`} style={{width: `${job.progress}%`}}></div>
+                    </div>
+                    {job.assignedMachineIds.length > 0 && (
+                      <p className="text-[10px] text-gray-400 mt-2">
+                        {job.assignedMachineIds.length} makine atandı
+                      </p>
+                    )}
+                  </div>
+                </Popup>
+              </Marker>
+            ))}
+
+            {/* Machine Markers */}
+            {machines.filter(machine => machine.location).map(machine => {
+              const machineIcon = machine.status === MachineStatus.Active
+                ? activeMachineIcon
+                : machine.status === MachineStatus.Maintenance
+                  ? maintenanceMachineIcon
+                  : idleMachineIcon;
+
+              return (
+                <Marker
+                  key={`machine-${machine.id}`}
+                  position={[machine.location!.lat, machine.location!.lng]}
+                  icon={machineIcon}
+                >
+                  <Popup>
+                    <div className="p-1 min-w-[180px]">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Navigation size={16} className={`${
+                          machine.status === MachineStatus.Active ? 'text-green-600' :
+                          machine.status === MachineStatus.Maintenance ? 'text-red-600' : 'text-yellow-600'
+                        }`} />
+                        <h4 className="font-bold text-smart-navy">{machine.brand} {machine.model}</h4>
+                      </div>
+                      <p className="text-xs text-gray-500 mb-1">{machine.name}</p>
+                      <p className="text-[10px] text-gray-400 mb-2">{machine.location!.address}</p>
+                      <div className="flex justify-between items-center">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                          machine.status === MachineStatus.Active ? 'bg-green-100 text-green-800' :
+                          machine.status === MachineStatus.Maintenance ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'
+                        }`}>
+                          {machine.status}
+                        </span>
+                        <span className="text-xs font-mono text-gray-600">{machine.engineHours}s</span>
+                      </div>
+                    </div>
+                  </Popup>
+                </Marker>
+              );
+            })}
+          </MapContainer>
         </div>
       </div>
 

@@ -12,11 +12,24 @@ import { Settings } from './components/Settings';
 import { LandingPage } from './components/LandingPage';
 import { MobileAppSimulator } from './components/MobileAppSimulator';
 import { useAuth } from './src/contexts/AuthContext';
+import { useToast } from './src/contexts/ToastContext';
 import {
   useMachines,
+  useCreateMachine,
+  useUpdateMachine,
+  useDeleteMachine,
   useOperators,
+  useCreateUser,
+  useUpdateUser,
+  useDeleteUser,
   useJobs,
+  useCreateJob,
+  useUpdateJob,
+  useDeleteJob,
   useChecklistTemplates,
+  useCreateTemplate,
+  useUpdateTemplate,
+  useDeleteTemplate,
   usePendingSubmissions,
   useReviewSubmission,
 } from './src/hooks';
@@ -48,9 +61,45 @@ const MOCK_MACHINES: Machine[] = [
   { id: '3', name: 'Liman Vinci 1', brand: 'Liebherr', model: 'LTM 1120', year: '2023', type: 'Crane', serialNumber: 'LBH-LTM-12', status: MachineStatus.Idle, engineHours: 890, lastService: '2023-09-20', imageUrl: 'https://images.unsplash.com/photo-1579407364101-72782e541176?q=80&w=800&auto=format&fit=crop', assignedOperatorId: 'op2', assignedChecklistId: 'tpl2', location: { lat: 38.4237, lng: 27.1428, address: 'Alsancak Limanı' }, commonFaults: [], serviceHistory: [] },
 ];
 const MOCK_JOBS: Job[] = [
-    { id: 'j1', title: 'Kuzey Otoyolu Viyadük İnşaatı', location: 'İstanbul', status: 'In Progress', progress: 65, startDate: '2023-01-10', assignedMachineIds: ['1'] },
-    { id: 'j2', title: 'Gölbaşı Altyapı Düzenleme', location: 'Ankara', status: 'Delayed', progress: 30, startDate: '2023-06-15', assignedMachineIds: ['2'] },
-    { id: 'j3', title: 'Liman Genişletme Projesi', location: 'İzmir', status: 'In Progress', progress: 85, startDate: '2022-11-20', assignedMachineIds: ['3'] }
+    {
+      id: 'j1',
+      title: 'Kuzey Otoyolu Viyadük İnşaatı',
+      location: 'İstanbul, Kuzey Marmara Otoyolu',
+      description: 'Viyadük inşaatı ve temel kazı çalışmaları',
+      status: 'In Progress',
+      progress: 65,
+      priority: 'high',
+      startDate: '2023-01-10',
+      endDate: '2024-06-15',
+      assignedMachineIds: ['1'],
+      coordinates: { lat: 41.0082, lng: 28.9784 }
+    },
+    {
+      id: 'j2',
+      title: 'Gölbaşı Altyapı Düzenleme',
+      location: 'Ankara, Gölbaşı',
+      description: 'Yol düzenleme ve altyapı iyileştirme projesi',
+      status: 'Delayed',
+      progress: 30,
+      priority: 'medium',
+      startDate: '2023-06-15',
+      endDate: '2024-03-01',
+      assignedMachineIds: ['2'],
+      coordinates: { lat: 39.9334, lng: 32.8597 }
+    },
+    {
+      id: 'j3',
+      title: 'Liman Genişletme Projesi',
+      location: 'İzmir, Alsancak Limanı',
+      description: 'Liman rıhtım genişletme ve yük kapasitesi artırma',
+      status: 'In Progress',
+      progress: 85,
+      priority: 'urgent',
+      startDate: '2022-11-20',
+      endDate: '2024-01-30',
+      assignedMachineIds: ['3'],
+      coordinates: { lat: 38.4237, lng: 27.1428 }
+    }
 ];
 const MOCK_CHECKLISTS: ChecklistItem[] = [
   { id: '101', machineId: 'CAT-320-XE-001', operatorName: 'Ahmet Yilmaz', date: '2023-11-20 07:30', status: ChecklistStatus.Pending, issues: [], notes: 'İşe hazır.', entries: [{ label: 'Motor Yağı Seviyesi', isOk: true, value: 'Tam' }, { label: 'Radyatör Suyu', isOk: true, value: 'Normal' }, { label: 'Hidrolik Sızıntı Kontrolü', isOk: true }, { label: 'Yürüyüş Takımları', isOk: true }, { label: 'Kova Tırnakları', isOk: true }] },
@@ -151,19 +200,32 @@ const mapJobStatus = (status: APIJob['status']): Job['status'] => {
     case 'in_progress': return 'In Progress';
     case 'completed': return 'Completed';
     case 'cancelled': return 'Delayed';
+    case 'scheduled': return 'Scheduled';
     default: return 'In Progress';
   }
+};
+
+// Map API job priority to frontend Job priority
+const mapJobPriority = (priority: APIJob['priority']): Job['priority'] => {
+  return priority || 'medium';
 };
 
 // Helper function to convert API job to frontend Job type
 const convertAPIJobToJob = (apiJob: APIJob): Job => ({
   id: apiJob.id,
   title: apiJob.title,
+  description: apiJob.description,
   location: apiJob.locationName || apiJob.locationAddress || '',
   status: mapJobStatus(apiJob.status),
   progress: apiJob.progress || 0,
-  startDate: apiJob.scheduledStart || apiJob.createdAt?.split('T')[0] || '',
+  priority: mapJobPriority(apiJob.priority),
+  startDate: apiJob.scheduledStart?.split('T')[0] || apiJob.createdAt?.split('T')[0] || '',
+  endDate: apiJob.scheduledEnd?.split('T')[0],
   assignedMachineIds: apiJob.assignments?.map(a => a.machineId) || [],
+  coordinates: apiJob.locationLat && apiJob.locationLng ? {
+    lat: apiJob.locationLat,
+    lng: apiJob.locationLng,
+  } : undefined,
 });
 
 // Helper function to convert API template to frontend ChecklistTemplate type
@@ -195,6 +257,9 @@ const App: React.FC = () => {
   // Auth State from Context
   const { isAuthenticated, isLoading: authLoading, logout, user, organization } = useAuth();
 
+  // Toast notifications
+  const toast = useToast();
+
   // API Data Queries (only run when authenticated)
   const { data: apiMachines, isLoading: machinesLoading } = useMachines();
   const { data: apiOperators, isLoading: operatorsLoading } = useOperators();
@@ -202,8 +267,24 @@ const App: React.FC = () => {
   const { data: apiTemplates, isLoading: templatesLoading } = useChecklistTemplates();
   const { data: apiSubmissions, isLoading: submissionsLoading } = usePendingSubmissions();
 
-  // Mutations (only the ones we're using)
+  // Mutations
   const reviewSubmissionMutation = useReviewSubmission();
+  // Job mutations
+  const createJobMutation = useCreateJob();
+  const updateJobMutation = useUpdateJob();
+  const deleteJobMutation = useDeleteJob();
+  // Machine mutations
+  const createMachineMutation = useCreateMachine();
+  const updateMachineMutation = useUpdateMachine();
+  const deleteMachineMutation = useDeleteMachine();
+  // User/Operator mutations
+  const createUserMutation = useCreateUser();
+  const updateUserMutation = useUpdateUser();
+  const deleteUserMutation = useDeleteUser();
+  // Template mutations
+  const createTemplateMutation = useCreateTemplate();
+  const updateTemplateMutation = useUpdateTemplate();
+  const deleteTemplateMutation = useDeleteTemplate();
 
   // Convert API data to frontend types, fallback to mock data if API not available
   const machines: Machine[] = useMemo(() => {
@@ -298,49 +379,204 @@ const App: React.FC = () => {
       setCurrentView('dashboard');
   };
 
-  // These functions now work with API via mutations when available
-  // For now they are placeholders that trigger API calls - the actual data refresh
-  // happens through React Query's cache invalidation
+  // Helper: Map frontend status to API status
+  const mapFrontendStatusToAPI = (status: Job['status']): 'draft' | 'scheduled' | 'in_progress' | 'completed' | 'cancelled' => {
+    switch (status) {
+      case 'In Progress': return 'in_progress';
+      case 'Completed': return 'completed';
+      case 'Delayed': return 'cancelled';
+      case 'Scheduled': return 'scheduled';
+      default: return 'scheduled';
+    }
+  };
+
+  // Helper: Map frontend machine type to API type
+  const mapMachineTypeToAPI = (type: Machine['type']): 'excavator' | 'dozer' | 'loader' | 'crane' | 'truck' => {
+    switch (type) {
+      case 'Excavator': return 'excavator';
+      case 'Dozer': return 'dozer';
+      case 'Loader': return 'loader';
+      case 'Crane': return 'crane';
+      case 'Truck': return 'truck';
+      default: return 'excavator';
+    }
+  };
+
+  // ============ MACHINE CRUD ============
   const addMachine = (machine: Machine) => {
-    // If using API, the mutation will invalidate cache and refetch
-    // For demo mode with mock data, this won't persist but UI will update via useMemo fallback
-    console.log('Add machine:', machine);
+    createMachineMutation.mutate({
+      name: machine.name,
+      brand: machine.brand,
+      model: machine.model,
+      year: parseInt(machine.year) || new Date().getFullYear(),
+      machineType: mapMachineTypeToAPI(machine.type),
+      serialNumber: machine.serialNumber,
+      engineHours: machine.engineHours,
+      locationLat: machine.location?.lat,
+      locationLng: machine.location?.lng,
+      locationAddress: machine.location?.address,
+    }, {
+      onSuccess: () => toast.success('Makine başarıyla eklendi'),
+      onError: () => toast.error('Makine eklenirken hata oluştu'),
+    });
   };
 
   const updateMachine = (updatedMachine: Machine) => {
-    console.log('Update machine:', updatedMachine);
+    updateMachineMutation.mutate({
+      id: updatedMachine.id,
+      data: {
+        name: updatedMachine.name,
+        brand: updatedMachine.brand,
+        model: updatedMachine.model,
+        engineHours: updatedMachine.engineHours,
+      }
+    }, {
+      onSuccess: () => toast.success('Makine başarıyla güncellendi'),
+      onError: () => toast.error('Makine güncellenirken hata oluştu'),
+    });
   };
 
+  const deleteMachine = (id: string) => {
+    deleteMachineMutation.mutate(id, {
+      onSuccess: () => toast.success('Makine başarıyla silindi'),
+      onError: () => toast.error('Makine silinirken hata oluştu'),
+    });
+  };
+
+  // ============ OPERATOR CRUD ============
   const addOperator = (operator: Operator) => {
-    console.log('Add operator:', operator);
+    const nameParts = operator.name.split(' ');
+    const firstName = nameParts[0] || '';
+    const lastName = nameParts.slice(1).join(' ') || '';
+
+    createUserMutation.mutate({
+      email: operator.email || `${firstName.toLowerCase()}@example.com`,
+      password: 'TempPassword123!',
+      firstName,
+      lastName,
+      role: 'operator',
+      phone: operator.phone,
+      licenses: operator.licenseType,
+      specialties: operator.specialty,
+    }, {
+      onSuccess: () => toast.success('Operatör başarıyla eklendi'),
+      onError: () => toast.error('Operatör eklenirken hata oluştu'),
+    });
   };
 
   const updateOperator = (updatedOperator: Operator) => {
-    console.log('Update operator:', updatedOperator);
+    const nameParts = updatedOperator.name.split(' ');
+    const firstName = nameParts[0] || '';
+    const lastName = nameParts.slice(1).join(' ') || '';
+
+    updateUserMutation.mutate({
+      id: updatedOperator.id,
+      data: {
+        firstName,
+        lastName,
+        phone: updatedOperator.phone,
+        licenses: updatedOperator.licenseType,
+        specialties: updatedOperator.specialty,
+      }
+    }, {
+      onSuccess: () => toast.success('Operatör başarıyla güncellendi'),
+      onError: () => toast.error('Operatör güncellenirken hata oluştu'),
+    });
   };
 
   const deleteOperator = (id: string) => {
-    console.log('Delete operator:', id);
+    deleteUserMutation.mutate(id, {
+      onSuccess: () => toast.success('Operatör başarıyla silindi'),
+      onError: () => toast.error('Operatör silinirken hata oluştu'),
+    });
   };
 
+  // ============ JOB CRUD ============
   const addJob = (job: Job) => {
-    console.log('Add job:', job);
+    createJobMutation.mutate({
+      title: job.title,
+      description: job.description,
+      locationName: job.location,
+      locationLat: job.coordinates?.lat,
+      locationLng: job.coordinates?.lng,
+      locationAddress: job.location,
+      priority: job.priority,
+      scheduledStart: job.startDate,
+      scheduledEnd: job.endDate,
+    }, {
+      onSuccess: () => toast.success('İş başarıyla eklendi'),
+      onError: () => toast.error('İş eklenirken hata oluştu'),
+    });
   };
 
   const updateJob = (updatedJob: Job) => {
-    console.log('Update job:', updatedJob);
+    updateJobMutation.mutate({
+      id: updatedJob.id,
+      data: {
+        title: updatedJob.title,
+        description: updatedJob.description,
+        locationName: updatedJob.location,
+        locationLat: updatedJob.coordinates?.lat,
+        locationLng: updatedJob.coordinates?.lng,
+        locationAddress: updatedJob.location,
+        priority: updatedJob.priority,
+        scheduledStart: updatedJob.startDate,
+        scheduledEnd: updatedJob.endDate,
+        progress: updatedJob.progress,
+        status: mapFrontendStatusToAPI(updatedJob.status),
+      }
+    }, {
+      onSuccess: () => toast.success('İş başarıyla güncellendi'),
+      onError: () => toast.error('İş güncellenirken hata oluştu'),
+    });
   };
 
+  const deleteJob = (id: string) => {
+    deleteJobMutation.mutate(id, {
+      onSuccess: () => toast.success('İş başarıyla silindi'),
+      onError: () => toast.error('İş silinirken hata oluştu'),
+    });
+  };
+
+  // ============ CHECKLIST TEMPLATE CRUD ============
   const addChecklistTemplate = (template: ChecklistTemplate) => {
-    console.log('Add template:', template);
+    createTemplateMutation.mutate({
+      name: template.name,
+      items: template.items.map((item, index) => ({
+        label: item,
+        type: 'checkbox' as const,
+        required: true,
+        order: index,
+      })),
+    }, {
+      onSuccess: () => toast.success('Şablon başarıyla eklendi'),
+      onError: () => toast.error('Şablon eklenirken hata oluştu'),
+    });
   };
 
   const updateChecklistTemplate = (updatedTemplate: ChecklistTemplate) => {
-    console.log('Update template:', updatedTemplate);
+    updateTemplateMutation.mutate({
+      id: updatedTemplate.id,
+      data: {
+        name: updatedTemplate.name,
+        items: updatedTemplate.items.map((item, index) => ({
+          label: item,
+          type: 'checkbox' as const,
+          required: true,
+          order: index,
+        })),
+      }
+    }, {
+      onSuccess: () => toast.success('Şablon başarıyla güncellendi'),
+      onError: () => toast.error('Şablon güncellenirken hata oluştu'),
+    });
   };
 
   const deleteChecklistTemplate = (id: string) => {
-    console.log('Delete template:', id);
+    deleteTemplateMutation.mutate(id, {
+      onSuccess: () => toast.success('Şablon başarıyla silindi'),
+      onError: () => toast.error('Şablon silinirken hata oluştu'),
+    });
   };
 
   const handleApproval = (id: string, approved: boolean) => {
@@ -348,6 +584,9 @@ const App: React.FC = () => {
     reviewSubmissionMutation.mutate({
       id,
       data: { status: approved ? 'approved' : 'rejected' }
+    }, {
+      onSuccess: () => toast.success(approved ? 'Kontrol listesi onaylandı' : 'Kontrol listesi reddedildi'),
+      onError: () => toast.error('İşlem sırasında hata oluştu'),
     });
   };
 
@@ -378,11 +617,11 @@ const App: React.FC = () => {
       case 'dashboard':
         return <Dashboard machines={machines} checklists={checklists} jobs={jobs} handleApproval={handleApproval} t={t.dashboard} />;
       case 'machines':
-        return <MachineManagement machines={machines} addMachine={addMachine} updateMachine={updateMachine} operators={operators} checklistTemplates={checklistTemplates} t={t.machines} />;
+        return <MachineManagement machines={machines} addMachine={addMachine} updateMachine={updateMachine} deleteMachine={deleteMachine} operators={operators} checklistTemplates={checklistTemplates} t={t.machines} />;
       case 'operators':
         return <OperatorManagement operators={operators} addOperator={addOperator} updateOperator={updateOperator} deleteOperator={deleteOperator} t={t.operators} />;
       case 'jobs':
-        return <JobManagement jobs={jobs} machines={machines} operators={operators} addJob={addJob} t={t.jobs} />;
+        return <JobManagement jobs={jobs} machines={machines} operators={operators} addJob={addJob} updateJob={updateJob} deleteJob={deleteJob} t={t.jobs} />;
       case 'checklists':
         return <ChecklistManagement templates={checklistTemplates} addTemplate={addChecklistTemplate} updateTemplate={updateChecklistTemplate} deleteTemplate={deleteChecklistTemplate} t={t.checklists} />;
       case 'approvals':

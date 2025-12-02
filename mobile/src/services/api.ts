@@ -214,6 +214,31 @@ export const usersApi = {
     const response = await api.get(`/users/${id}`);
     return response.data;
   },
+
+  updateProfile: async (data: { firstName?: string; lastName?: string; phone?: string }) => {
+    const response = await api.patch('/users/profile', data);
+    return response.data;
+  },
+
+  changePassword: async (currentPassword: string, newPassword: string) => {
+    const response = await api.post('/users/change-password', {
+      currentPassword,
+      newPassword,
+    });
+    return response.data;
+  },
+
+  updateNotificationSettings: async (settings: {
+    push?: boolean;
+    email?: boolean;
+    sms?: boolean;
+    checklistReminder?: boolean;
+    jobUpdates?: boolean;
+    maintenanceAlerts?: boolean;
+  }) => {
+    const response = await api.patch('/users/notification-settings', settings);
+    return response.data;
+  },
 };
 
 export default api;

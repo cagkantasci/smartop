@@ -12,6 +12,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { Header, Button, Card, Input } from '../../components/ui';
 import { checklistsApi, machinesApi } from '../../services/api';
 import { Machine, ChecklistTemplate, ChecklistItem } from '../../types';
+import { useTheme } from '../../context/ThemeContext';
+import { useLanguage, interpolate } from '../../context/LanguageContext';
 
 interface ChecklistItemState extends ChecklistItem {
   checked: boolean;
@@ -20,6 +22,10 @@ interface ChecklistItemState extends ChecklistItem {
 }
 
 export function ChecklistScreen() {
+  const { theme } = useTheme();
+  const { t } = useLanguage();
+  const colors = theme.colors;
+
   const [step, setStep] = useState<'select' | 'fill' | 'complete'>('select');
   const [machines, setMachines] = useState<Machine[]>([]);
   const [selectedMachine, setSelectedMachine] = useState<Machine | null>(null);
@@ -34,9 +40,19 @@ export function ChecklistScreen() {
   const loadMachines = async () => {
     try {
       const response = await machinesApi.getAll({ status: 'active' });
-      setMachines(response.machines || []);
+      // Handle different response formats safely
+      let machinesArray: Machine[] = [];
+      if (Array.isArray(response)) {
+        machinesArray = response;
+      } else if (response && Array.isArray(response.machines)) {
+        machinesArray = response.machines;
+      } else if (response && Array.isArray(response.data)) {
+        machinesArray = response.data;
+      }
+      setMachines(machinesArray);
     } catch (error) {
       console.error('Failed to load machines:', error);
+      setMachines([]);
     }
   };
 
@@ -45,11 +61,21 @@ export function ChecklistScreen() {
 
     // Load checklist template for machine type
     try {
-      const templates = await checklistsApi.getTemplates();
-      // For now, use the first available template
-      const machineTemplate = templates[0];
+      const response = await checklistsApi.getTemplates();
+      // Handle different response formats safely
+      let templatesArray: ChecklistTemplate[] = [];
+      if (Array.isArray(response)) {
+        templatesArray = response;
+      } else if (response && Array.isArray(response.templates)) {
+        templatesArray = response.templates;
+      } else if (response && Array.isArray(response.data)) {
+        templatesArray = response.data;
+      }
 
-      if (machineTemplate) {
+      // For now, use the first available template
+      const machineTemplate = templatesArray[0];
+
+      if (machineTemplate && machineTemplate.items) {
         setTemplate(machineTemplate);
         setItems(
           machineTemplate.items.map((item: ChecklistItem) => ({
@@ -61,11 +87,11 @@ export function ChecklistScreen() {
         );
         setStep('fill');
       } else {
-        Alert.alert('Uyarı', 'Bu makine için kontrol listesi bulunamadı');
+        Alert.alert(t.common.warning, t.checklist.empty.noTemplate);
       }
     } catch (error) {
       console.error('Failed to load template:', error);
-      Alert.alert('Hata', 'Kontrol listesi yüklenemedi');
+      Alert.alert(t.common.error, t.checklist.messages.loadError);
     }
   };
 
@@ -95,11 +121,11 @@ export function ChecklistScreen() {
     const uncheckedItems = items.filter((item) => !item.checked);
     if (uncheckedItems.length > 0) {
       Alert.alert(
-        'Eksik Kontrol',
-        `${uncheckedItems.length} kontrol maddesi işaretlenmedi. Yine de göndermek istiyor musunuz?`,
+        t.checklist.confirm.incomplete,
+        interpolate(t.checklist.confirm.incompleteMessage, { count: uncheckedItems.length }),
         [
-          { text: 'İptal', style: 'cancel' },
-          { text: 'Gönder', onPress: submitChecklist },
+          { text: t.common.cancel, style: 'cancel' },
+          { text: t.checklist.confirm.send, onPress: submitChecklist },
         ]
       );
     } else {
@@ -126,7 +152,7 @@ export function ChecklistScreen() {
       setStep('complete');
     } catch (error) {
       console.error('Failed to submit checklist:', error);
-      Alert.alert('Hata', 'Kontrol listesi gönderilemedi');
+      Alert.alert(t.common.error, t.checklist.messages.submitError);
     } finally {
       setIsSubmitting(false);
     }
@@ -142,12 +168,12 @@ export function ChecklistScreen() {
   // Machine Selection Screen
   if (step === 'select') {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <Header title="Günlük Kontrol" subtitle="Makine seçin" />
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+        <Header title={t.checklist.title} subtitle={t.checklist.subtitle} />
 
         <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-          <Text style={styles.instruction}>
-            Kontrol yapmak istediğiniz makineyi seçin
+          <Text style={[styles.instruction, { color: colors.textSecondary }]}>
+            {t.checklist.instruction}
           </Text>
 
           {machines.map((machine) => (
@@ -155,27 +181,27 @@ export function ChecklistScreen() {
               key={machine.id}
               onPress={() => selectMachine(machine)}
             >
-              <Card style={styles.machineCard}>
+              <Card style={[styles.machineCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
                 <View style={styles.machineRow}>
                   <View style={styles.machineIcon}>
                     <Ionicons name="construct" size={24} color="#3B82F6" />
                   </View>
                   <View style={styles.machineInfo}>
-                    <Text style={styles.machineName}>{machine.name}</Text>
-                    <Text style={styles.machineDetails}>
+                    <Text style={[styles.machineName, { color: colors.text }]}>{machine.name}</Text>
+                    <Text style={[styles.machineDetails, { color: colors.textSecondary }]}>
                       {machine.brand} • {machine.plateNumber}
                     </Text>
                   </View>
-                  <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+                  <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
                 </View>
               </Card>
             </TouchableOpacity>
           ))}
 
           {machines.length === 0 && (
-            <Card style={styles.emptyCard}>
-              <Ionicons name="construct-outline" size={48} color="#D1D5DB" />
-              <Text style={styles.emptyText}>Aktif makine bulunamadı</Text>
+            <Card style={[styles.emptyCard, { backgroundColor: colors.card }]}>
+              <Ionicons name="construct-outline" size={48} color={colors.textMuted} />
+              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>{t.checklist.empty.noMachines}</Text>
             </Card>
           )}
         </ScrollView>
@@ -189,17 +215,17 @@ export function ChecklistScreen() {
     const checkedCount = items.filter((item) => item.checked).length;
 
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
         <Header
-          title={selectedMachine?.name || 'Kontrol'}
-          subtitle={`${checkedCount}/${items.length} kontrol tamamlandı`}
+          title={selectedMachine?.name || t.checklist.title}
+          subtitle={interpolate(t.checklist.progress, { checked: checkedCount, total: items.length })}
           showBack
           onBackPress={() => setStep('select')}
         />
 
         <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
           {items.map((item, index) => (
-            <Card key={item.id} style={styles.checklistItem}>
+            <Card key={item.id} style={[styles.checklistItem, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
               <TouchableOpacity
                 style={styles.checklistHeader}
                 onPress={() => toggleItem(index)}
@@ -217,7 +243,8 @@ export function ChecklistScreen() {
                 <Text
                   style={[
                     styles.checklistLabel,
-                    item.checked ? styles.checklistLabelChecked : undefined,
+                    { color: item.checked ? colors.text : colors.textSecondary },
+                    item.checked && { fontWeight: '500' },
                   ]}
                 >
                   {item.label}
@@ -225,7 +252,7 @@ export function ChecklistScreen() {
               </TouchableOpacity>
 
               {item.checked && (
-                <View style={styles.checklistActions}>
+                <View style={[styles.checklistActions, { borderTopColor: colors.cardBorder }]}>
                   <TouchableOpacity
                     style={[
                       styles.issueButton,
@@ -244,13 +271,13 @@ export function ChecklistScreen() {
                         item.hasIssue ? styles.issueButtonTextActive : undefined,
                       ]}
                     >
-                      Sorun Var
+                      {t.checklist.hasIssue}
                     </Text>
                   </TouchableOpacity>
 
                   {item.hasIssue && (
                     <Input
-                      placeholder="Sorunu açıklayın..."
+                      placeholder={t.checklist.describeIssue}
                       value={item.notes}
                       onChangeText={(text) => updateNotes(index, text)}
                       multiline
@@ -263,17 +290,17 @@ export function ChecklistScreen() {
           ))}
         </ScrollView>
 
-        <View style={styles.footer}>
+        <View style={[styles.footer, { backgroundColor: colors.card, borderTopColor: colors.cardBorder }]}>
           {issueCount > 0 && (
             <View style={styles.issueWarning}>
-              <Ionicons name="warning" size={20} color="#F59E0B" />
-              <Text style={styles.issueWarningText}>
-                {issueCount} sorun bildirildi
+              <Ionicons name="warning" size={20} color={colors.warning} />
+              <Text style={[styles.issueWarningText, { color: colors.warning }]}>
+                {interpolate(t.checklist.issueReported, { count: issueCount })}
               </Text>
             </View>
           )}
           <Button
-            title="Kontrolü Tamamla"
+            title={t.checklist.complete}
             onPress={handleSubmit}
             loading={isSubmitting}
             fullWidth
@@ -285,17 +312,17 @@ export function ChecklistScreen() {
 
   // Complete Screen
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       <View style={styles.completeContainer}>
         <View style={styles.successIcon}>
-          <Ionicons name="checkmark-circle" size={80} color="#22C55E" />
+          <Ionicons name="checkmark-circle" size={80} color={colors.success} />
         </View>
-        <Text style={styles.successTitle}>Kontrol Tamamlandı!</Text>
-        <Text style={styles.successMessage}>
-          {selectedMachine?.name} için günlük kontrol başarıyla kaydedildi.
+        <Text style={[styles.successTitle, { color: colors.text }]}>{t.checklist.success.title}</Text>
+        <Text style={[styles.successMessage, { color: colors.textSecondary }]}>
+          {interpolate(t.checklist.success.message, { machine: selectedMachine?.name || '' })}
         </Text>
         <Button
-          title="Yeni Kontrol Başlat"
+          title={t.checklist.success.newCheck}
           onPress={resetForm}
           fullWidth
           style={styles.newCheckButton}
@@ -305,20 +332,9 @@ export function ChecklistScreen() {
   );
 }
 
-// Dark tema renkleri
-const COLORS = {
-  primary: '#111827',
-  secondary: '#F59E0B',
-  card: '#1E293B',
-  cardBorder: 'rgba(255, 255, 255, 0.1)',
-  text: '#FFFFFF',
-  textSecondary: '#9CA3AF',
-};
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.primary,
   },
   scrollView: {
     flex: 1,
@@ -329,8 +345,7 @@ const styles = StyleSheet.create({
   },
   instruction: {
     fontSize: 15,
-    color: COLORS.textSecondary,
-    marginBottom: 16,
+        marginBottom: 16,
   },
   machineCard: {
     marginBottom: 10,
@@ -354,12 +369,10 @@ const styles = StyleSheet.create({
   machineName: {
     fontSize: 16,
     fontWeight: '600',
-    color: COLORS.text,
-  },
+      },
   machineDetails: {
     fontSize: 13,
-    color: COLORS.textSecondary,
-    marginTop: 2,
+        marginTop: 2,
   },
   emptyCard: {
     alignItems: 'center',
@@ -367,8 +380,7 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 15,
-    color: COLORS.textSecondary,
-    marginTop: 12,
+        marginTop: 12,
   },
   checklistItem: {
     marginBottom: 12,
@@ -393,19 +405,16 @@ const styles = StyleSheet.create({
   checklistLabel: {
     flex: 1,
     fontSize: 15,
-    color: COLORS.textSecondary,
-    marginLeft: 12,
+        marginLeft: 12,
   },
   checklistLabelChecked: {
-    color: COLORS.text,
-    fontWeight: '500',
+        fontWeight: '500',
   },
   checklistActions: {
     marginTop: 12,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: COLORS.cardBorder,
-  },
+      },
   issueButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -433,10 +442,8 @@ const styles = StyleSheet.create({
   },
   footer: {
     padding: 16,
-    backgroundColor: COLORS.card,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.cardBorder,
-  },
+        borderTopWidth: 1,
+      },
   issueWarning: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -445,8 +452,7 @@ const styles = StyleSheet.create({
   },
   issueWarningText: {
     fontSize: 14,
-    color: COLORS.secondary,
-    fontWeight: '500',
+        fontWeight: '500',
     marginLeft: 8,
   },
   completeContainer: {
@@ -461,13 +467,11 @@ const styles = StyleSheet.create({
   successTitle: {
     fontSize: 24,
     fontWeight: '700',
-    color: COLORS.text,
-    marginBottom: 8,
+        marginBottom: 8,
   },
   successMessage: {
     fontSize: 15,
-    color: COLORS.textSecondary,
-    textAlign: 'center',
+        textAlign: 'center',
     marginBottom: 32,
   },
   newCheckButton: {

@@ -2,4 +2,8 @@ export { LoginScreen } from './auth/LoginScreen';
 export { DashboardScreen } from './dashboard/DashboardScreen';
 export { ChecklistScreen } from './checklist/ChecklistScreen';
 export { MachineListScreen } from './machines/MachineListScreen';
+export { MachineDetailScreen } from './machines/MachineDetailScreen';
 export { ProfileScreen } from './profile/ProfileScreen';
+export { JobsScreen } from './jobs/JobsScreen';
+export { ApprovalsScreen } from './approvals/ApprovalsScreen';
+export { SettingsScreen } from './settings/SettingsScreen';

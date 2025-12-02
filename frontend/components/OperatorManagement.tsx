@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Plus, Search, User, Phone, Mail, Award, Trash2, Pencil, X, Check, FileBadge, CheckSquare } from 'lucide-react';
+import { Plus, Search, User, Phone, Mail, Award, Trash2, Pencil, X, Check, FileBadge, CheckSquare, AlertTriangle } from 'lucide-react';
 import { Operator, TranslationDictionary } from '../types';
 
 interface OperatorManagementProps {
@@ -19,6 +19,8 @@ export const OperatorManagement: React.FC<OperatorManagementProps> = ({ operator
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingOperator, setEditingOperator] = useState<Operator | null>(null);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [operatorToDelete, setOperatorToDelete] = useState<Operator | null>(null);
 
   const [formData, setFormData] = useState<Partial<Operator>>({
     name: '',
@@ -39,6 +41,18 @@ export const OperatorManagement: React.FC<OperatorManagementProps> = ({ operator
         avatar: ''
     });
     setEditingOperator(null);
+  };
+
+  const openDeleteConfirm = (operator: Operator) => {
+    setOperatorToDelete(operator);
+    setIsDeleteConfirmOpen(true);
+  };
+
+  const handleDelete = () => {
+    if (!operatorToDelete) return;
+    deleteOperator(operatorToDelete.id);
+    setIsDeleteConfirmOpen(false);
+    setOperatorToDelete(null);
   };
 
   const handleOpenModal = (operator?: Operator) => {
@@ -127,8 +141,8 @@ export const OperatorManagement: React.FC<OperatorManagementProps> = ({ operator
             className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-6 hover:shadow-lg transition-all group relative cursor-pointer hover:border-blue-200 dark:hover:border-blue-800"
           >
              <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                <button 
-                    onClick={(e) => { e.stopPropagation(); deleteOperator(op.id); }}
+                <button
+                    onClick={(e) => { e.stopPropagation(); openDeleteConfirm(op); }}
                     className="p-2 bg-gray-100 dark:bg-slate-700 hover:bg-red-100 dark:hover:bg-red-900/30 text-gray-500 hover:text-red-600 rounded-lg transition-colors"
                     title="Sil"
                 >
@@ -298,6 +312,45 @@ export const OperatorManagement: React.FC<OperatorManagementProps> = ({ operator
                 </form>
              </div>
          </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {isDeleteConfirmOpen && operatorToDelete && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md">
+            <div className="p-6">
+              <div className="flex items-center justify-center w-16 h-16 mx-auto bg-red-100 dark:bg-red-900/30 rounded-full mb-4">
+                <AlertTriangle size={32} className="text-red-600 dark:text-red-400" />
+              </div>
+              <h3 className="text-xl font-bold text-center text-smart-navy dark:text-white mb-2">
+                Operatörü Silmek İstediğinize Emin Misiniz?
+              </h3>
+              <div className="flex flex-col items-center mb-4">
+                <img src={operatorToDelete.avatar} alt={operatorToDelete.name} className="w-16 h-16 rounded-full border-2 border-gray-200 dark:border-slate-600 mb-2" />
+                <p className="font-bold text-smart-navy dark:text-white">{operatorToDelete.name}</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">{operatorToDelete.email}</p>
+              </div>
+              <p className="text-center text-sm text-red-500 dark:text-red-400">
+                Bu işlem geri alınamaz. Operatör ve tüm ilişkili veriler kalıcı olarak silinecektir.
+              </p>
+            </div>
+            <div className="p-6 border-t border-gray-100 dark:border-slate-700 flex gap-3">
+              <button
+                onClick={() => { setIsDeleteConfirmOpen(false); setOperatorToDelete(null); }}
+                className="flex-1 px-6 py-3 rounded-lg font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
+              >
+                İptal
+              </button>
+              <button
+                onClick={handleDelete}
+                className="flex-1 px-6 py-3 rounded-lg font-bold bg-red-600 text-white hover:bg-red-700 transition-colors flex items-center justify-center gap-2"
+              >
+                <Trash2 size={18} />
+                Evet, Sil
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

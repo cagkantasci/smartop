@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Plus, Search, Fuel, Calendar, Tractor, Truck, Anchor, Hammer, HardHat, User, FileCheck, X, ShoppingCart, CreditCard, CheckCircle, Pencil, Smartphone, Save, Briefcase, UserCog, Check, Percent, Zap, Sparkles, Loader2, RefreshCw, Image as ImageIcon } from 'lucide-react';
+import { Plus, Search, Fuel, Calendar, Tractor, Truck, Anchor, Hammer, HardHat, User, FileCheck, X, ShoppingCart, CreditCard, CheckCircle, Pencil, Smartphone, Save, Briefcase, UserCog, Check, Percent, Zap, Sparkles, Loader2, RefreshCw, Image as ImageIcon, Trash2, AlertTriangle, MapPin } from 'lucide-react';
 import { Machine, MachineStatus, Operator, ChecklistTemplate, TranslationDictionary } from '../types';
 
 interface MachineManagementProps {
@@ -9,6 +9,7 @@ interface MachineManagementProps {
   checklistTemplates: ChecklistTemplate[];
   addMachine: (m: Machine) => void;
   updateMachine: (m: Machine) => void;
+  deleteMachine?: (id: string) => void;
   t: TranslationDictionary['machines'];
 }
 
@@ -66,10 +67,12 @@ const MACHINE_KNOWLEDGE_BASE = [
   { keywords: ['man', 'tgs', 'tgx'], brand: 'MAN', type: 'Truck', image: 'https://images.unsplash.com/photo-1596726224388-7521c7508493?q=80&w=800' },
 ];
 
-export const MachineManagement: React.FC<MachineManagementProps> = ({ machines, operators, checklistTemplates, addMachine, updateMachine, t }) => {
+export const MachineManagement: React.FC<MachineManagementProps> = ({ machines, operators, checklistTemplates, addMachine, updateMachine, deleteMachine, t }) => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [editingMachine, setEditingMachine] = useState<Machine | null>(null);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [machineToDelete, setMachineToDelete] = useState<Machine | null>(null);
   
   // Payment State
   const [paymentMethod, setPaymentMethod] = useState<'credit_card' | 'apple_store' | 'google_play'>('credit_card');
@@ -205,6 +208,21 @@ export const MachineManagement: React.FC<MachineManagementProps> = ({ machines, 
     if (editingMachine) {
         updateMachine(editingMachine);
         setEditingMachine(null);
+    }
+  };
+
+  const openDeleteConfirm = (machine: Machine) => {
+    setMachineToDelete(machine);
+    setIsDeleteConfirmOpen(true);
+  };
+
+  const handleDelete = () => {
+    if (!machineToDelete || !deleteMachine) return;
+    deleteMachine(machineToDelete.id);
+    setIsDeleteConfirmOpen(false);
+    setMachineToDelete(null);
+    if (editingMachine?.id === machineToDelete.id) {
+      setEditingMachine(null);
     }
   };
 
@@ -770,7 +788,236 @@ export const MachineManagement: React.FC<MachineManagementProps> = ({ machines, 
           </div>
       )}
 
-      {/* Full Edit Modal (Existing Edit Logic) */}
+      {/* Full Edit Modal */}
+      {editingMachine && (
+        <div className="fixed inset-0 bg-smart-navy/80 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
+            <div className="bg-gray-50 dark:bg-slate-900 px-8 py-6 border-b border-gray-100 dark:border-slate-700 flex justify-between items-center sticky top-0 z-10">
+              <div>
+                <h3 className="text-2xl font-bold text-smart-navy dark:text-white flex items-center gap-2">
+                  <Pencil className="text-amber-500" />
+                  Makine Düzenle
+                </h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{editingMachine.brand} {editingMachine.model}</p>
+              </div>
+              <button onClick={() => setEditingMachine(null)} className="text-gray-400 hover:text-red-600 transition-colors">
+                <X size={24} />
+              </button>
+            </div>
+
+            <form onSubmit={handleEditSave} className="p-8 space-y-6">
+              {/* Machine Image Preview */}
+              {editingMachine.imageUrl && (
+                <div className="h-48 w-full rounded-xl overflow-hidden border border-gray-200 dark:border-slate-600">
+                  <img src={editingMachine.imageUrl} alt={editingMachine.name} className="w-full h-full object-cover" />
+                </div>
+              )}
+
+              {/* Basic Info */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Makine Adı</label>
+                  <input
+                    type="text"
+                    required
+                    value={editingMachine.name}
+                    onChange={(e) => setEditingMachine({...editingMachine, name: e.target.value})}
+                    className="w-full px-4 py-3 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-smart-navy/20 bg-white dark:bg-slate-700 text-gray-900 dark:text-white outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Marka</label>
+                  <input
+                    type="text"
+                    required
+                    value={editingMachine.brand}
+                    onChange={(e) => setEditingMachine({...editingMachine, brand: e.target.value})}
+                    className="w-full px-4 py-3 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-smart-navy/20 bg-white dark:bg-slate-700 text-gray-900 dark:text-white outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Model</label>
+                  <input
+                    type="text"
+                    required
+                    value={editingMachine.model}
+                    onChange={(e) => setEditingMachine({...editingMachine, model: e.target.value})}
+                    className="w-full px-4 py-3 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-smart-navy/20 bg-white dark:bg-slate-700 text-gray-900 dark:text-white outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Seri No</label>
+                  <input
+                    type="text"
+                    required
+                    value={editingMachine.serialNumber}
+                    onChange={(e) => setEditingMachine({...editingMachine, serialNumber: e.target.value})}
+                    className="w-full px-4 py-3 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-smart-navy/20 bg-white dark:bg-slate-700 text-gray-900 dark:text-white outline-none font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Üretim Yılı</label>
+                  <input
+                    type="number"
+                    required
+                    value={editingMachine.year}
+                    onChange={(e) => setEditingMachine({...editingMachine, year: e.target.value})}
+                    className="w-full px-4 py-3 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-smart-navy/20 bg-white dark:bg-slate-700 text-gray-900 dark:text-white outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Motor Saati</label>
+                  <input
+                    type="number"
+                    required
+                    value={editingMachine.engineHours}
+                    onChange={(e) => setEditingMachine({...editingMachine, engineHours: parseInt(e.target.value) || 0})}
+                    className="w-full px-4 py-3 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-smart-navy/20 bg-white dark:bg-slate-700 text-gray-900 dark:text-white outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Status */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Durum</label>
+                <select
+                  value={editingMachine.status}
+                  onChange={(e) => setEditingMachine({...editingMachine, status: e.target.value as MachineStatus})}
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-smart-navy/20 bg-white dark:bg-slate-700 text-gray-900 dark:text-white outline-none"
+                >
+                  <option value={MachineStatus.Active}>Aktif</option>
+                  <option value={MachineStatus.Idle}>Boşta</option>
+                  <option value={MachineStatus.Maintenance}>Bakımda</option>
+                </select>
+              </div>
+
+              {/* Location (if exists) */}
+              {editingMachine.location && (
+                <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border border-blue-100 dark:border-blue-800">
+                  <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-2 flex items-center gap-1">
+                    <MapPin size={14} /> Konum Bilgisi
+                  </p>
+                  <p className="text-sm text-gray-700 dark:text-gray-300">{editingMachine.location.address}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Koordinatlar: {editingMachine.location.lat.toFixed(4)}, {editingMachine.location.lng.toFixed(4)}
+                  </p>
+                </div>
+              )}
+
+              {/* Assignments */}
+              <div className="bg-gray-50 dark:bg-slate-700 p-6 rounded-xl border border-gray-200 dark:border-slate-600 space-y-4">
+                <h4 className="text-sm font-bold text-smart-navy dark:text-white uppercase tracking-wider flex items-center gap-2">
+                  <Briefcase size={16} />
+                  Operasyonel Atamalar
+                </h4>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-2 uppercase flex items-center gap-1">
+                      <User size={14} /> Operatör
+                    </label>
+                    <select
+                      value={editingMachine.assignedOperatorId || ''}
+                      onChange={(e) => setEditingMachine({...editingMachine, assignedOperatorId: e.target.value || undefined})}
+                      className="w-full px-4 py-3 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-smart-navy/20 bg-white dark:bg-slate-700 text-gray-900 dark:text-white outline-none"
+                    >
+                      <option value="">Operatör Seçilmedi</option>
+                      {operators.map(op => (
+                        <option key={op.id} value={op.id}>{op.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-2 uppercase flex items-center gap-1">
+                      <FileCheck size={14} /> Kontrol Listesi
+                    </label>
+                    <select
+                      value={editingMachine.assignedChecklistId || ''}
+                      onChange={(e) => setEditingMachine({...editingMachine, assignedChecklistId: e.target.value || undefined})}
+                      className="w-full px-4 py-3 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-smart-navy/20 bg-white dark:bg-slate-700 text-gray-900 dark:text-white outline-none"
+                    >
+                      <option value="">Liste Seçilmedi</option>
+                      {checklistTemplates.map(tpl => (
+                        <option key={tpl.id} value={tpl.id}>{tpl.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex justify-between pt-4 border-t border-gray-100 dark:border-slate-700">
+                {deleteMachine && (
+                  <button
+                    type="button"
+                    onClick={() => openDeleteConfirm(editingMachine)}
+                    className="px-4 py-3 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg font-bold transition-colors flex items-center gap-2"
+                  >
+                    <Trash2 size={18} />
+                    Makineyi Sil
+                  </button>
+                )}
+                <div className="flex gap-3 ml-auto">
+                  <button
+                    type="button"
+                    onClick={() => setEditingMachine(null)}
+                    className="px-6 py-3 border border-gray-300 dark:border-slate-600 rounded-lg text-gray-700 dark:text-gray-300 font-bold hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
+                  >
+                    İptal
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-6 py-3 bg-amber-500 text-white rounded-lg font-bold hover:bg-amber-600 transition-colors shadow-lg flex items-center gap-2"
+                  >
+                    <Save size={18} />
+                    Değişiklikleri Kaydet
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {isDeleteConfirmOpen && machineToDelete && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md">
+            <div className="p-6">
+              <div className="flex items-center justify-center w-16 h-16 mx-auto bg-red-100 dark:bg-red-900/30 rounded-full mb-4">
+                <AlertTriangle size={32} className="text-red-600 dark:text-red-400" />
+              </div>
+              <h3 className="text-xl font-bold text-center text-smart-navy dark:text-white mb-2">
+                Makineyi Silmek İstediğinize Emin Misiniz?
+              </h3>
+              <p className="text-center text-gray-500 dark:text-gray-400 mb-2">
+                <span className="font-bold text-smart-navy dark:text-white">{machineToDelete.brand} {machineToDelete.model}</span>
+              </p>
+              <p className="text-center text-sm text-gray-400 dark:text-gray-500 mb-1">
+                Seri No: {machineToDelete.serialNumber}
+              </p>
+              <p className="text-center text-sm text-red-500 dark:text-red-400 mt-4">
+                Bu işlem geri alınamaz. Makine ve tüm ilişkili veriler kalıcı olarak silinecektir.
+              </p>
+            </div>
+            <div className="p-6 border-t border-gray-100 dark:border-slate-700 flex gap-3">
+              <button
+                onClick={() => { setIsDeleteConfirmOpen(false); setMachineToDelete(null); }}
+                className="flex-1 px-6 py-3 rounded-lg font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
+              >
+                İptal
+              </button>
+              <button
+                onClick={handleDelete}
+                className="flex-1 px-6 py-3 rounded-lg font-bold bg-red-600 text-white hover:bg-red-700 transition-colors flex items-center justify-center gap-2"
+              >
+                <Trash2 size={18} />
+                Evet, Sil
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

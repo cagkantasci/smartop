@@ -11,8 +11,16 @@ export type AuthStackParamList = {
 export type MainTabParamList = {
   Dashboard: undefined;
   Machines: undefined;
+  Jobs: undefined;
   Checklist: undefined;
+  Approvals: undefined;
   Profile: undefined;
+};
+
+// Stack navigators for detail screens
+export type MachinesStackParamList = {
+  MachineList: undefined;
+  MachineDetail: { machineId: string };
 };
 
 // Root Stack (combines Auth and Main)

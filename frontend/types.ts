@@ -78,10 +78,17 @@ export interface Job {
   id: string;
   title: string;
   location: string;
-  status: 'In Progress' | 'Completed' | 'Delayed';
+  description?: string;
+  status: 'In Progress' | 'Completed' | 'Delayed' | 'Scheduled';
   progress: number; // 0-100
+  priority?: 'low' | 'medium' | 'high' | 'urgent';
   assignedMachineIds: string[];
   startDate: string;
+  endDate?: string;
+  coordinates?: {
+    lat: number;
+    lng: number;
+  };
 }
 
 export interface ChecklistEntry {
