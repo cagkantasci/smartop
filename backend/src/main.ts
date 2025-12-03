@@ -1,13 +1,18 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { ValidationPipe, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
+import { GlobalExceptionFilter } from './common/filters/http-exception.filter';
 
 async function bootstrap() {
+  const logger = new Logger('Bootstrap');
   const app = await NestFactory.create(AppModule);
 
   const configService = app.get(ConfigService);
+
+  // Global exception filter
+  app.useGlobalFilters(new GlobalExceptionFilter());
 
   // Global validation pipe
   app.useGlobalPipes(
@@ -17,6 +22,15 @@ async function bootstrap() {
       transform: true,
       transformOptions: {
         enableImplicitConversion: true,
+      },
+      exceptionFactory: (errors) => {
+        const messages = errors.map((error) => {
+          const constraints = error.constraints
+            ? Object.values(error.constraints)
+            : ['Geçersiz değer'];
+          return `${error.property}: ${constraints.join(', ')}`;
+        });
+        return new (require('@nestjs/common').BadRequestException)(messages);
       },
     }),
   );

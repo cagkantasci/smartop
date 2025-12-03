@@ -56,8 +56,14 @@ export class EventsGateway
         return;
       }
 
+      const jwtSecret = this.configService.get<string>('JWT_SECRET');
+      if (!jwtSecret) {
+        this.logger.error('JWT_SECRET environment variable is required');
+        client.disconnect();
+        return;
+      }
       const payload = this.jwtService.verify(token, {
-        secret: this.configService.get('JWT_SECRET'),
+        secret: jwtSecret,
       });
 
       client.user = {

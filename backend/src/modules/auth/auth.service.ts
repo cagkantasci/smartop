@@ -9,11 +9,14 @@ import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
 import { PrismaService } from '../../common/prisma/prisma.service';
-import { RegisterDto, LoginDto, RefreshTokenDto } from './dto';
+import { RegisterDto, LoginDto, RefreshTokenDto, ForgotPasswordDto, ResetPasswordDto } from './dto';
 import { JwtPayload } from './strategies/jwt.strategy';
+import { Logger } from '@nestjs/common';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
@@ -179,6 +182,89 @@ export class AuthService {
       user: this.sanitizeUser(user),
       organization: user.organization,
     };
+  }
+
+  async forgotPassword(dto: ForgotPasswordDto) {
+    const user = await this.prisma.user.findFirst({
+      where: { email: dto.email },
+    });
+
+    // Always return success to prevent email enumeration
+    if (!user) {
+      this.logger.warn(`Password reset requested for non-existent email: ${dto.email}`);
+      return { message: 'Şifre sıfırlama talimatları e-posta adresinize gönderildi' };
+    }
+
+    // Generate reset token
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const tokenHash = this.hashToken(resetToken);
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+    // Invalidate any existing reset tokens for this user
+    await this.prisma.passwordResetToken.updateMany({
+      where: { userId: user.id, usedAt: null },
+      data: { usedAt: new Date() },
+    });
+
+    // Create new reset token
+    await this.prisma.passwordResetToken.create({
+      data: {
+        userId: user.id,
+        tokenHash,
+        expiresAt,
+      },
+    });
+
+    // TODO: Send email with reset link
+    // For now, log the token (remove in production)
+    this.logger.log(`Password reset token for ${dto.email}: ${resetToken}`);
+
+    return {
+      message: 'Şifre sıfırlama talimatları e-posta adresinize gönderildi',
+      // Remove in production - only for testing
+      resetToken: this.configService.get('NODE_ENV') === 'development' ? resetToken : undefined,
+    };
+  }
+
+  async resetPassword(dto: ResetPasswordDto) {
+    const tokenHash = this.hashToken(dto.token);
+
+    const resetToken = await this.prisma.passwordResetToken.findFirst({
+      where: {
+        tokenHash,
+        usedAt: null,
+        expiresAt: { gt: new Date() },
+      },
+      include: { user: true },
+    });
+
+    if (!resetToken) {
+      throw new BadRequestException('Geçersiz veya süresi dolmuş şifre sıfırlama bağlantısı');
+    }
+
+    // Hash new password
+    const passwordHash = await bcrypt.hash(dto.newPassword, 12);
+
+    // Update password and mark token as used
+    await this.prisma.$transaction([
+      this.prisma.user.update({
+        where: { id: resetToken.userId },
+        data: { passwordHash },
+      }),
+      this.prisma.passwordResetToken.update({
+        where: { id: resetToken.id },
+        data: { usedAt: new Date() },
+      }),
+      // Revoke all refresh tokens for security
+      this.prisma.refreshToken.updateMany({
+        where: { userId: resetToken.userId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      }),
+    ]);
+
+    this.logger.log(`Password reset successful for user: ${resetToken.user.email}`);
+
+    return { message: 'Şifreniz başarıyla değiştirildi' };
   }
 
   private async generateTokens(user: { id: string; email: string; organizationId: string; role: string }) {

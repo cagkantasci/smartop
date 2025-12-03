@@ -141,6 +141,14 @@ model User {
   isActive        Boolean   @default(true) @map("is_active")
   lastLoginAt     DateTime? @map("last_login_at")
   emailVerifiedAt DateTime? @map("email_verified_at")
+  // Location tracking for operators (live tracking)
+  locationLat          Decimal?  @map("location_lat") @db.Decimal(10, 8)
+  locationLng          Decimal?  @map("location_lng") @db.Decimal(11, 8)
+  locationAddress      String?   @map("location_address")
+  locationUpdatedAt    DateTime? @map("location_updated_at")
+  // 2FA / Biometric settings
+  twoFactorEnabled     Boolean   @default(false) @map("two_factor_enabled")
+  biometricEnabled     Boolean   @default(false) @map("biometric_enabled")
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")
 
@@ -156,6 +164,7 @@ model User {
   auditLogs             AuditLog[]
   refreshTokens         RefreshToken[]
   jobAssignments        JobAssignment[]
+  passwordResetTokens   PasswordResetToken[]
 
   @@unique([organizationId, email])
   @@index([organizationId])
@@ -459,4 +468,22 @@ model RefreshToken {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("refresh_tokens")
+}
+
+// ============================================
+// PASSWORD RESET TOKENS
+// ============================================
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  tokenHash String    @map("token_hash")
+  expiresAt DateTime  @map("expires_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  usedAt    DateTime? @map("used_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tokenHash])
+  @@map("password_reset_tokens")
 }

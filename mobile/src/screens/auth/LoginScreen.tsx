@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,11 +8,13 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Button, Input } from '../../components/ui';
 import { useAuth } from '../../context/AuthContext';
+import { biometricService, BiometricStatus } from '../../services/biometricService';
 
 // Frontend dark temasına uygun renkler (slate-900 tema)
 const COLORS = {
@@ -34,6 +36,37 @@ export function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+  const [biometricStatus, setBiometricStatus] = useState<BiometricStatus | null>(null);
+  const [isBiometricLoading, setIsBiometricLoading] = useState(false);
+
+  // Check biometric availability on mount
+  useEffect(() => {
+    checkBiometric();
+  }, []);
+
+  const checkBiometric = async () => {
+    const status = await biometricService.checkAvailability();
+    setBiometricStatus(status);
+  };
+
+  const handleBiometricLogin = async () => {
+    if (!biometricStatus?.isAvailable || !biometricStatus?.isEnabled) return;
+
+    setIsBiometricLoading(true);
+    try {
+      const result = await biometricService.biometricLogin();
+
+      if (result.success && result.credentials) {
+        await login(result.credentials.email, result.credentials.password);
+      } else {
+        Alert.alert('Biyometrik Giriş', result.error || 'Biyometrik doğrulama başarısız');
+      }
+    } catch (error: any) {
+      Alert.alert('Hata', error.message || 'Biyometrik giriş başarısız');
+    } finally {
+      setIsBiometricLoading(false);
+    }
+  };
 
   const validate = () => {
     const newErrors: { email?: string; password?: string } = {};
@@ -99,11 +132,12 @@ export function LoginScreen() {
           {/* Logo & Header */}
           <View style={styles.header}>
             <View style={styles.logoContainer}>
-              <View style={styles.logo}>
-                <Ionicons name="pulse" size={32} color={COLORS.primary} />
-              </View>
+              <Image
+                source={require('../../../assets/smartop-white.png')}
+                style={styles.logoImage}
+                resizeMode="contain"
+              />
             </View>
-            <Text style={styles.title}>Smartop</Text>
             <Text style={styles.subtitle}>
               Saha Operasyonlarını Dijitalleştirin
             </Text>
@@ -162,6 +196,26 @@ export function LoginScreen() {
                 style={styles.loginButton}
                 textStyle={styles.loginButtonText}
               />
+
+              {/* Biometric Login Button */}
+              {biometricStatus?.isAvailable && biometricStatus?.isEnabled && (
+                <TouchableOpacity
+                  style={styles.biometricButton}
+                  onPress={handleBiometricLogin}
+                  disabled={isBiometricLoading}
+                >
+                  <Ionicons
+                    name={biometricStatus.biometricType === 'facial' ? 'scan' : 'finger-print'}
+                    size={24}
+                    color={COLORS.secondary}
+                  />
+                  <Text style={styles.biometricButtonText}>
+                    {isBiometricLoading
+                      ? 'Doğrulanıyor...'
+                      : biometricService.getBiometricTypeName(biometricStatus.biometricType) + ' ile Giriş'}
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
 
             {/* Demo Credentials */}
@@ -207,20 +261,11 @@ const styles = StyleSheet.create({
   },
   logoContainer: {
     marginBottom: 12,
-  },
-  logo: {
-    width: 56,
-    height: 56,
-    borderRadius: 14,
-    backgroundColor: COLORS.secondary,
     alignItems: 'center',
-    justifyContent: 'center',
   },
-  title: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: COLORS.text,
-    letterSpacing: -0.5,
+  logoImage: {
+    width: 200,
+    height: 60,
   },
   subtitle: {
     fontSize: 15,
@@ -289,6 +334,22 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
     fontSize: 17,
     fontWeight: '700',
+  },
+  biometricButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    paddingVertical: 14,
+    borderWidth: 1,
+    borderColor: COLORS.secondary,
+    borderRadius: 12,
+    marginTop: 12,
+  },
+  biometricButtonText: {
+    color: COLORS.secondary,
+    fontSize: 15,
+    fontWeight: '600',
   },
   demoSection: {
     marginTop: 24,

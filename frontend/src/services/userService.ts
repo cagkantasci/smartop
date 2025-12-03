@@ -16,6 +16,31 @@ export interface User {
   organizationId: string;
   createdAt: string;
   updatedAt: string;
+  // Location tracking fields
+  locationLat?: number;
+  locationLng?: number;
+  locationAddress?: string;
+  locationUpdatedAt?: string;
+  // 2FA settings
+  biometricEnabled?: boolean;
+  twoFactorEnabled?: boolean;
+}
+
+export interface OperatorWithLocation {
+  id: string;
+  firstName: string;
+  lastName: string;
+  phone?: string;
+  avatarUrl?: string;
+  locationLat: number;
+  locationLng: number;
+  locationAddress?: string;
+  locationUpdatedAt: string;
+  assignedMachines: Array<{
+    id: string;
+    name: string;
+    status: string;
+  }>;
 }
 
 export interface CreateUserDto {
@@ -75,6 +100,12 @@ export const userService = {
   // Get managers only
   async getManagers(): Promise<User[]> {
     return this.getAll({ role: 'manager', isActive: true });
+  },
+
+  // Get operators with their live locations (for map tracking)
+  async getOperatorsWithLocation(): Promise<OperatorWithLocation[]> {
+    const response = await api.get<OperatorWithLocation[]>('/users/operators/locations');
+    return response.data;
   },
 };
 

@@ -19,6 +19,7 @@ import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { QueryUsersDto } from './dto/query-users.dto';
+import { UpdateLocationDto } from './dto/update-location.dto';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 
@@ -91,5 +92,35 @@ export class UsersController {
     @CurrentUser('role') role: string,
   ) {
     return this.usersService.remove(id, organizationId, role);
+  }
+
+  @Post('location')
+  @ApiOperation({ summary: 'Update current user location (for live tracking)' })
+  @ApiResponse({ status: 200, description: 'Location updated' })
+  async updateLocation(
+    @Body() dto: UpdateLocationDto,
+    @CurrentUser('id') userId: string,
+  ) {
+    return this.usersService.updateLocation(userId, dto);
+  }
+
+  @Get('operators/locations')
+  @Roles('admin', 'manager')
+  @ApiOperation({ summary: 'Get all operators with their current locations' })
+  @ApiResponse({ status: 200, description: 'List of operators with locations' })
+  async getOperatorsWithLocation(
+    @CurrentUser('organizationId') organizationId: string,
+  ) {
+    return this.usersService.getOperatorsWithLocation(organizationId);
+  }
+
+  @Post('biometric')
+  @ApiOperation({ summary: 'Toggle biometric authentication' })
+  @ApiResponse({ status: 200, description: 'Biometric setting updated' })
+  async toggleBiometric(
+    @Body('enabled') enabled: boolean,
+    @CurrentUser('id') userId: string,
+  ) {
+    return this.usersService.toggleBiometric(userId, enabled);
   }
 }

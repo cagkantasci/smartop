@@ -19,8 +19,10 @@ export {
   useCreateUser,
   useUpdateUser,
   useDeleteUser,
+  useOperatorsWithLocation,
   USERS_QUERY_KEY,
   OPERATORS_QUERY_KEY,
+  OPERATORS_LOCATIONS_QUERY_KEY,
 } from './useUsers';
 
 // Checklist hooks

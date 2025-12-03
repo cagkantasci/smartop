@@ -1,8 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { userService, User, CreateUserDto, UpdateUserDto, UserListParams } from '../services';
+import { userService, User, CreateUserDto, UpdateUserDto, UserListParams, OperatorWithLocation } from '../services';
 
 export const USERS_QUERY_KEY = 'users';
 export const OPERATORS_QUERY_KEY = 'operators';
+export const OPERATORS_LOCATIONS_QUERY_KEY = 'operatorsLocations';
 
 export const useUsers = (params?: UserListParams, options?: { enabled?: boolean }) => {
   return useQuery({
@@ -69,5 +70,16 @@ export const useDeleteUser = () => {
       queryClient.invalidateQueries({ queryKey: [USERS_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: [OPERATORS_QUERY_KEY] });
     },
+  });
+};
+
+// Get operators with live locations for map tracking
+export const useOperatorsWithLocation = (options?: { enabled?: boolean; refetchInterval?: number }) => {
+  return useQuery({
+    queryKey: [OPERATORS_LOCATIONS_QUERY_KEY],
+    queryFn: () => userService.getOperatorsWithLocation(),
+    enabled: options?.enabled !== false,
+    refetchInterval: options?.refetchInterval || 30000, // Refresh every 30 seconds by default
+    staleTime: 10000, // Consider data stale after 10 seconds
   });
 };

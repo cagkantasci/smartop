@@ -1,12 +1,13 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
-import { AlertTriangle, CheckCircle, Clock, TrendingUp, Activity, MapPin, Wrench, Calendar, ChevronRight, ArrowLeft, Building2, User, Filter, Map, Navigation } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Clock, TrendingUp, Activity, MapPin, Wrench, Calendar, ChevronRight, ArrowLeft, Building2, User, Filter, Map, Navigation, Users } from 'lucide-react';
 import { Machine, ChecklistItem, ChecklistStatus, MachineStatus, Job, TranslationDictionary } from '../types';
 import { ApprovalWorkflow } from './ApprovalWorkflow';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { useOperatorsWithLocation } from '../src/hooks';
 
 // Fix for default marker icons in Leaflet
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -53,6 +54,16 @@ const maintenanceMachineIcon = new L.Icon({
   shadowSize: [41, 41]
 });
 
+// Operator icon (purple for operators)
+const operatorIcon = new L.Icon({
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-violet.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41]
+});
+
 // Map center adjuster component
 const MapController: React.FC<{ center: [number, number]; zoom: number }> = ({ center, zoom }) => {
   const map = useMap();
@@ -76,6 +87,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ machines, checklists, jobs
   const [viewState, setViewState] = useState<ViewState>('overview');
   const [selectedMachine, setSelectedMachine] = useState<Machine | null>(null);
   const [chartFilterId, setChartFilterId] = useState<string>('all');
+
+  // Fetch operators with live location (refreshes every 30 seconds)
+  const { data: operatorsWithLocation = [] } = useOperatorsWithLocation({ refetchInterval: 30000 });
 
   // Stats
   const pendingApprovals = checklists.filter(c => c.status === ChecklistStatus.Pending).length;
@@ -376,9 +390,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ machines, checklists, jobs
         <div className="p-4 border-b border-gray-100 dark:border-slate-700 flex justify-between items-center">
           <h3 className="text-lg font-bold text-smart-navy dark:text-white flex items-center gap-2">
             <Map size={20} className="text-blue-500" />
-            Canlı Harita - Makine ve İş Konumları
+            Canlı Harita - Makine, Operatör ve İş Konumları
           </h3>
-          <div className="flex items-center gap-4 text-xs">
+          <div className="flex items-center gap-4 text-xs flex-wrap">
             <div className="flex items-center gap-1">
               <div className="w-3 h-3 rounded-full bg-blue-500"></div>
               <span className="text-gray-500 dark:text-gray-400">İş Konumu</span>
@@ -394,6 +408,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ machines, checklists, jobs
             <div className="flex items-center gap-1">
               <div className="w-3 h-3 rounded-full bg-red-500"></div>
               <span className="text-gray-500 dark:text-gray-400">Bakımda</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-3 h-3 rounded-full bg-purple-500"></div>
+              <span className="text-gray-500 dark:text-gray-400">Operatör ({operatorsWithLocation.length})</span>
             </div>
           </div>
         </div>
@@ -484,6 +502,49 @@ export const Dashboard: React.FC<DashboardProps> = ({ machines, checklists, jobs
                 </Marker>
               );
             })}
+
+            {/* Operator Markers - Live Tracking */}
+            {operatorsWithLocation.map(operator => (
+              <Marker
+                key={`operator-${operator.id}`}
+                position={[Number(operator.locationLat), Number(operator.locationLng)]}
+                icon={operatorIcon}
+              >
+                <Popup>
+                  <div className="p-1 min-w-[200px]">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Users size={16} className="text-purple-600" />
+                      <h4 className="font-bold text-smart-navy">{operator.firstName} {operator.lastName}</h4>
+                    </div>
+                    {operator.phone && (
+                      <p className="text-xs text-gray-500 mb-1">Tel: {operator.phone}</p>
+                    )}
+                    {operator.locationAddress && (
+                      <p className="text-[10px] text-gray-400 mb-2">{operator.locationAddress}</p>
+                    )}
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-800">
+                        Operatör
+                      </span>
+                      <span className="text-[10px] text-gray-400">
+                        {operator.locationUpdatedAt ? new Date(operator.locationUpdatedAt).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : '-'}
+                      </span>
+                    </div>
+                    {operator.assignedMachines && operator.assignedMachines.length > 0 && (
+                      <div className="border-t pt-2 mt-2">
+                        <p className="text-[10px] font-bold text-gray-600 mb-1">Atanan Makineler:</p>
+                        {operator.assignedMachines.map(machine => (
+                          <div key={machine.id} className="flex items-center gap-1 text-[10px] text-gray-500">
+                            <Navigation size={10} className={machine.status === 'active' ? 'text-green-500' : 'text-gray-400'} />
+                            {machine.name}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </Popup>
+              </Marker>
+            ))}
           </MapContainer>
         </div>
       </div>

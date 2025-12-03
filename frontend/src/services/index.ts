@@ -8,7 +8,7 @@ export { jobService } from './jobService';
 // Re-export types
 export type { LoginCredentials, RegisterData, AuthResponse, User as AuthUser } from './authService';
 export type { Machine, CreateMachineDto, UpdateMachineDto, MachineListParams } from './machineService';
-export type { User, CreateUserDto, UpdateUserDto, UserListParams } from './userService';
+export type { User, CreateUserDto, UpdateUserDto, UserListParams, OperatorWithLocation } from './userService';
 export type {
   ChecklistTemplate,
   ChecklistSubmission,

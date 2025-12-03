@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { LayoutDashboard, Truck, CheckSquare, Settings, LogOut, HardHat, Building2, Phone, Briefcase, Wallet, ClipboardList, Sun, Moon, Users } from 'lucide-react';
+import { LayoutDashboard, Truck, CheckSquare, Settings, LogOut, Building2, Phone, Briefcase, Wallet, ClipboardList, Sun, Moon, Users } from 'lucide-react';
 import { Language, TranslationDictionary } from '../types';
 
 interface SidebarProps {
@@ -48,13 +48,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
   return (
     <div className="w-64 h-screen bg-smart-navy dark:bg-black text-white flex flex-col fixed left-0 top-0 z-10 shadow-xl border-r border-yellow-500/20">
       <div className="p-6 flex items-center gap-3 border-b border-white/10 bg-smart-navy dark:bg-black">
-        <div className="w-10 h-10 bg-smart-yellow rounded-lg flex items-center justify-center shadow-lg shadow-yellow-500/20">
-          <HardHat className="text-smart-navy w-6 h-6" />
-        </div>
-        <div>
-          <h1 className="text-xl font-bold tracking-tight text-white">Smartop</h1>
-          <p className="text-xs text-smart-yellow font-medium">{t.managerPortal}</p>
-        </div>
+        <img
+          src="/smartop-white.png"
+          alt="Smartop"
+          className="h-10 w-auto"
+        />
+        <p className="text-xs text-smart-yellow font-medium">{t.managerPortal}</p>
       </div>
 
       <div className="px-4 py-6">

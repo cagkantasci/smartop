@@ -9,6 +9,7 @@ import { PrismaService } from '../../common/prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { QueryUsersDto } from './dto/query-users.dto';
+import { UpdateLocationDto } from './dto/update-location.dto';
 
 @Injectable()
 export class UsersService {
@@ -188,6 +189,80 @@ export class UsersService {
     });
 
     return { message: 'User deactivated successfully' };
+  }
+
+  // Update operator location (for live tracking)
+  async updateLocation(userId: string, dto: UpdateLocationDto) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const updatedUser = await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        locationLat: dto.latitude,
+        locationLng: dto.longitude,
+        locationAddress: dto.address,
+        locationUpdatedAt: new Date(),
+      },
+    });
+
+    return {
+      id: updatedUser.id,
+      locationLat: updatedUser.locationLat,
+      locationLng: updatedUser.locationLng,
+      locationAddress: updatedUser.locationAddress,
+      locationUpdatedAt: updatedUser.locationUpdatedAt,
+    };
+  }
+
+  // Get all operators with location (for map display)
+  async getOperatorsWithLocation(organizationId: string) {
+    const operators = await this.prisma.user.findMany({
+      where: {
+        organizationId,
+        role: 'operator',
+        isActive: true,
+        locationLat: { not: null },
+        locationLng: { not: null },
+      },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        phone: true,
+        avatarUrl: true,
+        locationLat: true,
+        locationLng: true,
+        locationAddress: true,
+        locationUpdatedAt: true,
+        assignedMachines: {
+          select: {
+            id: true,
+            name: true,
+            status: true,
+          },
+        },
+      },
+    });
+
+    return operators;
+  }
+
+  // Toggle biometric auth setting
+  async toggleBiometric(userId: string, enabled: boolean) {
+    const updatedUser = await this.prisma.user.update({
+      where: { id: userId },
+      data: { biometricEnabled: enabled },
+    });
+
+    return {
+      biometricEnabled: updatedUser.biometricEnabled,
+    };
   }
 
   private sanitizeUser(user: any) {

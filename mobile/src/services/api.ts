@@ -325,6 +325,18 @@ export const usersApi = {
     const response = await api.patch('/users/notification-settings', settings);
     return response.data;
   },
+
+  // Update user location (for live tracking)
+  updateLocation: async (latitude: number, longitude: number, address?: string) => {
+    const response = await api.post('/users/location', { latitude, longitude, address });
+    return response.data;
+  },
+
+  // Toggle biometric authentication
+  toggleBiometric: async (enabled: boolean) => {
+    const response = await api.post('/users/biometric', { enabled });
+    return response.data;
+  },
 };
 
 // Notifications API

@@ -8,10 +8,16 @@ import { EventsGateway } from './events.gateway';
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
-        secret: configService.get('JWT_SECRET'),
-        signOptions: { expiresIn: configService.get('JWT_ACCESS_EXPIRES_IN') },
-      }),
+      useFactory: (configService: ConfigService) => {
+        const jwtSecret = configService.get<string>('JWT_SECRET');
+        if (!jwtSecret) {
+          throw new Error('JWT_SECRET environment variable is required');
+        }
+        return {
+          secret: jwtSecret,
+          signOptions: { expiresIn: configService.get('JWT_ACCESS_EXPIRES_IN') },
+        };
+      },
     }),
   ],
   providers: [EventsGateway],

@@ -6,15 +6,19 @@ import {
   IsOptional,
   IsEnum,
   IsArray,
+  Matches,
 } from 'class-validator';
 
 export class CreateUserDto {
-  @IsEmail()
+  @IsEmail({}, { message: 'Geçerli bir e-posta adresi giriniz' })
   email: string;
 
   @IsString()
-  @MinLength(8)
+  @MinLength(8, { message: 'Şifre en az 8 karakter olmalıdır' })
   @MaxLength(100)
+  @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, {
+    message: 'Şifre en az bir küçük harf, bir büyük harf ve bir rakam içermelidir',
+  })
   password: string;
 
   @IsString()
