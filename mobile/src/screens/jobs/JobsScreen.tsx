@@ -17,10 +17,11 @@ import { Ionicons } from '@expo/vector-icons';
 import MapView, { Marker, PROVIDER_GOOGLE, Region } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { Card, StatusBadge, Button, Input } from '../../components/ui';
-import { jobsApi } from '../../services/api';
-import { Job, JobStatus, JobPriority } from '../../types';
+import { jobsApi, machinesApi } from '../../services/api';
+import { Job, JobStatus, JobPriority, Machine } from '../../types';
 import { useTheme } from '../../context/ThemeContext';
 import { useLanguage, interpolate } from '../../context/LanguageContext';
+import { useAuth } from '../../context/AuthContext';
 
 const { width, height } = Dimensions.get('window');
 
@@ -84,21 +85,27 @@ const DEFAULT_REGION = {
 export function JobsScreen() {
   const { theme } = useTheme();
   const { t, language } = useLanguage();
+  const { user } = useAuth();
   const colors = theme.colors;
 
+  const isOperator = user?.role === 'operator';
   const mapRef = useRef<MapView>(null);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [filteredJobs, setFilteredJobs] = useState<Job[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<JobStatus | 'all'>('all');
+  const [showMyJobsOnly, setShowMyJobsOnly] = useState(false); // Default: show all jobs
   const [showAddModal, setShowAddModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showMapPickerModal, setShowMapPickerModal] = useState(false);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUpdatingJob, setIsUpdatingJob] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [currentRegion, setCurrentRegion] = useState<Region>(DEFAULT_REGION);
+  const [machines, setMachines] = useState<Machine[]>([]);
+  const [selectedMachineIds, setSelectedMachineIds] = useState<string[]>([]);
   const [newJob, setNewJob] = useState({
     title: '',
     description: '',
@@ -140,6 +147,7 @@ export function JobsScreen() {
   const fetchJobs = async () => {
     try {
       const response = await jobsApi.getAll();
+
       // Handle different response formats safely
       let jobsArray: Job[] = [];
       if (Array.isArray(response)) {
@@ -149,27 +157,74 @@ export function JobsScreen() {
       } else if (response && Array.isArray(response.data)) {
         jobsArray = response.data;
       }
+
+      // Debug: Find jobs with operator assignments
+      const jobsWithOperatorAssignments = jobsArray.filter(j =>
+        j.jobAssignments?.some(a => a.operatorId)
+      );
+
+      // Log for debugging
+      console.log('[DEBUG] User ID:', user?.id);
+      console.log('[DEBUG] Total jobs:', jobsArray.length);
+      console.log('[DEBUG] Jobs with operator assignments:', jobsWithOperatorAssignments.length);
+
+      if (jobsWithOperatorAssignments.length > 0) {
+        const firstJob = jobsWithOperatorAssignments[0];
+        const operatorAssignment = firstJob.jobAssignments?.find(a => a.operatorId);
+        console.log('[DEBUG] First assigned job operatorId:', operatorAssignment?.operatorId);
+      }
+
       setJobs(jobsArray);
     } catch (error) {
       console.error('Failed to fetch jobs:', error);
+      Alert.alert('Hata', 'İşler yüklenemedi: ' + (error as Error).message);
       setJobs([]);
     } finally {
       setLoading(false);
     }
   };
 
+  const fetchMachines = async () => {
+    try {
+      const response = await machinesApi.getAll({ status: 'active' });
+      let machinesArray: Machine[] = [];
+      if (Array.isArray(response)) {
+        machinesArray = response;
+      } else if (response && Array.isArray(response.machines)) {
+        machinesArray = response.machines;
+      } else if (response && Array.isArray(response.data)) {
+        machinesArray = response.data;
+      }
+      setMachines(machinesArray);
+    } catch (error) {
+      console.error('Failed to load machines:', error);
+      setMachines([]);
+    }
+  };
+
   useEffect(() => {
     fetchJobs();
+    fetchMachines();
     getCurrentLocation();
   }, []);
 
   useEffect(() => {
     let result = jobs;
+
+    // Filter by user assignment if showMyJobsOnly is enabled
+    if (showMyJobsOnly && user?.id) {
+      result = result.filter((job) => {
+        // Check if user is assigned as operator to this job
+        const hasOperatorAssignment = job.jobAssignments?.some(a => a.operatorId === user.id);
+        return hasOperatorAssignment;
+      });
+    }
+
     if (statusFilter !== 'all') {
       result = result.filter((j) => j.status === statusFilter);
     }
     setFilteredJobs(result);
-  }, [jobs, statusFilter]);
+  }, [jobs, statusFilter, showMyJobsOnly, user?.id]);
 
   const getCurrentLocation = async () => {
     try {
@@ -210,6 +265,14 @@ export function JobsScreen() {
     }
   };
 
+  const toggleMachineSelection = (machineId: string) => {
+    setSelectedMachineIds((prev) =>
+      prev.includes(machineId)
+        ? prev.filter((id) => id !== machineId)
+        : [...prev, machineId]
+    );
+  };
+
   const handleAddJob = async () => {
     if (!newJob.title) {
       Alert.alert('Hata', 'Lütfen iş başlığı girin');
@@ -226,11 +289,13 @@ export function JobsScreen() {
         locationLng: newJob.locationLng,
         priority: newJob.priority,
         status: 'scheduled',
+        machineIds: selectedMachineIds.length > 0 ? selectedMachineIds : undefined,
       });
       Alert.alert('Başarılı', 'İş başarıyla eklendi');
       setShowAddModal(false);
       setNewJob({ title: '', description: '', locationName: '', locationLat: null, locationLng: null, priority: 'medium' });
       setSelectedLocation(null);
+      setSelectedMachineIds([]);
       fetchJobs();
     } catch (error) {
       Alert.alert('Hata', 'İş eklenemedi');
@@ -244,7 +309,55 @@ export function JobsScreen() {
     setShowDetailModal(true);
   };
 
-  const renderJobItem = ({ item }: { item: Job }) => (
+  const handleStartJob = async () => {
+    if (!selectedJob) return;
+
+    setIsUpdatingJob(true);
+    try {
+      await jobsApi.start(selectedJob.id);
+      Alert.alert('Başarılı', 'İş başlatıldı');
+      fetchJobs();
+      setShowDetailModal(false);
+    } catch (error) {
+      Alert.alert('Hata', 'İş başlatılamadı');
+    } finally {
+      setIsUpdatingJob(false);
+    }
+  };
+
+  const handleCompleteJob = async () => {
+    if (!selectedJob) return;
+
+    Alert.alert(
+      'İşi Tamamla',
+      'Bu işi tamamlamak istediğinizden emin misiniz?',
+      [
+        { text: 'İptal', style: 'cancel' },
+        {
+          text: 'Tamamla',
+          onPress: async () => {
+            setIsUpdatingJob(true);
+            try {
+              await jobsApi.complete(selectedJob.id);
+              Alert.alert('Başarılı', 'İş tamamlandı');
+              fetchJobs();
+              setShowDetailModal(false);
+            } catch (error) {
+              Alert.alert('Hata', 'İş tamamlanamadı');
+            } finally {
+              setIsUpdatingJob(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const renderJobItem = ({ item }: { item: Job }) => {
+    // Debug log
+    console.log(`[DEBUG] Rendering job ${item.id}: jobAssignments =`, item.jobAssignments?.length ?? 'undefined');
+
+    return (
     <TouchableOpacity activeOpacity={0.7} onPress={() => openJobDetail(item)}>
       <Card style={styles.jobCard}>
         <View style={styles.jobHeader}>
@@ -311,28 +424,66 @@ export function JobsScreen() {
               <Text style={styles.detailText}>Konum Var</Text>
             </View>
           )}
-          {item.machines && item.machines.length > 0 && (
+          {/* Machine count - always show if assignments exist */}
+          {item.jobAssignments && item.jobAssignments.length > 0 ? (
             <View style={styles.detailItem}>
-              <Ionicons name="construct-outline" size={16} color="#6B7280" />
-              <Text style={styles.detailText}>{item.machines.length} Makine</Text>
+              <Ionicons name="construct-outline" size={16} color="#F59E0B" />
+              <Text style={[styles.detailText, { color: '#F59E0B' }]}>
+                {item.jobAssignments.filter(a => a.machine).length} Makine
+              </Text>
             </View>
-          )}
+          ) : null}
         </View>
       </Card>
     </TouchableOpacity>
-  );
+    );
+  };
 
-  const renderEmpty = () => (
-    <View style={styles.emptyContainer}>
-      <Ionicons name="briefcase-outline" size={64} color="#D1D5DB" />
-      <Text style={styles.emptyTitle}>İş Bulunamadı</Text>
-      <Text style={styles.emptyText}>
-        {statusFilter !== 'all'
-          ? 'Seçili durumda iş bulunamadı'
-          : 'Henüz kayıtlı iş yok'}
-      </Text>
-    </View>
-  );
+  const renderEmpty = () => {
+    // Count jobs assigned to current user
+    const myAssignedJobs = jobs.filter(job =>
+      job.jobAssignments?.some(a => a.operatorId === user?.id)
+    );
+
+    // Find all operator assignments in all jobs
+    const allOperatorAssignments = jobs.flatMap(job =>
+      job.jobAssignments?.filter(a => a.operatorId) || []
+    );
+
+    return (
+      <View style={styles.emptyContainer}>
+        <Ionicons name="briefcase-outline" size={64} color="#D1D5DB" />
+        <Text style={styles.emptyTitle}>İş Bulunamadı</Text>
+        <Text style={styles.emptyText}>
+          {showMyJobsOnly
+            ? `Size atanmış iş yok (Toplam ${jobs.length} iş var)`
+            : statusFilter !== 'all'
+              ? 'Seçili durumda iş bulunamadı'
+              : 'Henüz kayıtlı iş yok'}
+        </Text>
+        {showMyJobsOnly && (
+          <>
+            <Text style={[styles.emptyText, { marginTop: 12, fontSize: 12, color: '#F59E0B' }]}>
+              Giriş yapan: {user?.firstName} {user?.lastName} ({user?.role})
+            </Text>
+            <Text style={[styles.emptyText, { marginTop: 4, fontSize: 11, color: '#9CA3AF' }]}>
+              ID: {user?.id?.substring(0, 8)}...
+            </Text>
+            {user?.role === 'admin' && (
+              <Text style={[styles.emptyText, { marginTop: 12, fontSize: 13, color: '#EF4444' }]}>
+                ⚠️ Admin olarak giriş yaptınız. Operatör hesabıyla giriş yapın.
+              </Text>
+            )}
+            {allOperatorAssignments.length > 0 && (
+              <Text style={[styles.emptyText, { marginTop: 8, fontSize: 11, color: '#6B7280' }]}>
+                (İşlere atanmış operatör: {allOperatorAssignments[0]?.operatorId?.substring(0, 8)}...)
+              </Text>
+            )}
+          </>
+        )}
+      </View>
+    );
+  };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
@@ -342,6 +493,8 @@ export function JobsScreen() {
           <Text style={[styles.headerTitle, { color: colors.text }]}>{t.jobs.title}</Text>
           <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>
             {interpolate(t.jobs.subtitle, { count: filteredJobs.length })}
+            {' | '}
+            {jobs.filter(j => j.jobAssignments && j.jobAssignments.length > 0).length} w/machines
           </Text>
         </View>
         <TouchableOpacity
@@ -350,6 +503,38 @@ export function JobsScreen() {
         >
           <Ionicons name="add" size={24} color="#FFFFFF" />
         </TouchableOpacity>
+      </View>
+
+      {/* Filter Toggle - Show for all users */}
+      <View style={[styles.operatorFilterContainer, { backgroundColor: colors.card, borderBottomColor: colors.cardBorder }]}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+          <TouchableOpacity
+            style={[
+              styles.myJobsToggle,
+              { backgroundColor: showMyJobsOnly ? '#3B82F6' : colors.activeBackground },
+            ]}
+            onPress={() => setShowMyJobsOnly(!showMyJobsOnly)}
+          >
+            <Ionicons
+              name={showMyJobsOnly ? 'person' : 'people'}
+              size={18}
+              color={showMyJobsOnly ? '#FFFFFF' : colors.textSecondary}
+            />
+            <Text
+              style={[
+                styles.myJobsToggleText,
+                { color: showMyJobsOnly ? '#FFFFFF' : colors.textSecondary },
+              ]}
+            >
+              {showMyJobsOnly ? 'Bana Atanan İşler' : 'Tüm İşler'}
+            </Text>
+          </TouchableOpacity>
+          <View style={{ marginLeft: 10 }}>
+            <Text style={{ color: user?.role === 'admin' ? '#EF4444' : '#22C55E', fontSize: 12, fontWeight: '600' }}>
+              {user?.firstName} ({user?.role})
+            </Text>
+          </View>
+        </View>
       </View>
 
       {/* Status Filter */}
@@ -489,6 +674,47 @@ export function JobsScreen() {
                 </TouchableOpacity>
               ))}
             </View>
+
+            {/* Machine Selection */}
+            <Text style={styles.inputLabel}>Makine Seçimi</Text>
+            <View style={styles.machineSelectionContainer}>
+              {machines.length === 0 ? (
+                <Text style={styles.noMachinesText}>Makine bulunamadı</Text>
+              ) : (
+                machines.map((machine) => {
+                  const isSelected = selectedMachineIds.includes(machine.id);
+                  return (
+                    <TouchableOpacity
+                      key={machine.id}
+                      style={[
+                        styles.machineOption,
+                        isSelected && styles.machineOptionSelected,
+                      ]}
+                      onPress={() => toggleMachineSelection(machine.id)}
+                    >
+                      <View style={[styles.machineCheckbox, isSelected && styles.machineCheckboxSelected]}>
+                        {isSelected && (
+                          <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+                        )}
+                      </View>
+                      <View style={styles.machineOptionInfo}>
+                        <Text style={[styles.machineOptionName, isSelected && styles.machineOptionNameSelected]}>
+                          {machine.name}
+                        </Text>
+                        <Text style={styles.machineOptionDetails}>
+                          {machine.brand} • {machine.plateNumber}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })
+              )}
+            </View>
+            {selectedMachineIds.length > 0 && (
+              <Text style={styles.selectedMachinesCount}>
+                {selectedMachineIds.length} makine seçildi
+              </Text>
+            )}
           </ScrollView>
 
           <View style={styles.modalFooter}>
@@ -655,6 +881,36 @@ export function JobsScreen() {
                 </Card>
               )}
 
+              {/* Assigned Machines */}
+              {selectedJob.jobAssignments && selectedJob.jobAssignments.filter(a => a.machine).length > 0 && (
+                <Card style={styles.detailCard}>
+                  <Text style={styles.detailCardTitle}>Atanan Makineler</Text>
+                  {selectedJob.jobAssignments.filter(a => a.machine).map((assignment) => (
+                    <View key={assignment.id} style={styles.assignedMachineRow}>
+                      <Ionicons name="construct" size={18} color="#F59E0B" />
+                      <Text style={styles.assignedMachineName}>{assignment.machine?.name}</Text>
+                    </View>
+                  ))}
+                </Card>
+              )}
+
+              {/* Assigned Operators */}
+              {selectedJob.jobAssignments && selectedJob.jobAssignments.filter(a => a.operator).length > 0 && (
+                <Card style={styles.detailCard}>
+                  <Text style={styles.detailCardTitle}>Atanan Operatörler</Text>
+                  {selectedJob.jobAssignments.filter(a => a.operator).map((assignment) => (
+                    <View key={assignment.id} style={styles.assignedOperatorRow}>
+                      <View style={styles.operatorAvatar}>
+                        <Ionicons name="person" size={16} color="#FFFFFF" />
+                      </View>
+                      <Text style={styles.assignedOperatorName}>
+                        {assignment.operator?.firstName} {assignment.operator?.lastName}
+                      </Text>
+                    </View>
+                  ))}
+                </Card>
+              )}
+
               {/* Schedule Info */}
               {selectedJob.scheduledStart && (
                 <Card style={styles.detailCard}>
@@ -688,6 +944,49 @@ export function JobsScreen() {
                     </View>
                   )}
                 </Card>
+              )}
+
+              {/* Action Buttons - Show for users assigned to this job */}
+              {selectedJob.jobAssignments?.some(a => a.operatorId === user?.id) && (
+                <View style={styles.actionButtonsContainer}>
+                  {/* Start Job Button - Show only for scheduled jobs */}
+                  {selectedJob.status === 'scheduled' && (
+                    <TouchableOpacity
+                      style={[styles.actionButton, styles.startButton]}
+                      onPress={handleStartJob}
+                      disabled={isUpdatingJob}
+                    >
+                      <Ionicons name="play-circle" size={24} color="#FFFFFF" />
+                      <Text style={styles.actionButtonText}>
+                        {isUpdatingJob ? 'Başlatılıyor...' : 'İşi Başlat'}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+
+                  {/* Complete Job Button - Show only for in_progress jobs */}
+                  {selectedJob.status === 'in_progress' && (
+                    <TouchableOpacity
+                      style={[styles.actionButton, styles.completeButton]}
+                      onPress={handleCompleteJob}
+                      disabled={isUpdatingJob}
+                    >
+                      <Ionicons name="checkmark-circle" size={24} color="#FFFFFF" />
+                      <Text style={styles.actionButtonText}>
+                        {isUpdatingJob ? 'Tamamlanıyor...' : 'İşi Tamamla'}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+
+                  {/* Job Completed Message */}
+                  {selectedJob.status === 'completed' && (
+                    <View style={[styles.actionButton, styles.completedInfo]}>
+                      <Ionicons name="checkmark-done-circle" size={24} color="#22C55E" />
+                      <Text style={[styles.actionButtonText, { color: '#22C55E' }]}>
+                        Bu iş tamamlandı
+                      </Text>
+                    </View>
+                  )}
+                </View>
               )}
             </ScrollView>
           </View>
@@ -1089,5 +1388,151 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '500',
         marginTop: 2,
+  },
+  // Machine Selection styles
+  machineSelectionContainer: {
+    marginBottom: 16,
+  },
+  noMachinesText: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    textAlign: 'center',
+    paddingVertical: 20,
+  },
+  machineOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  machineOptionSelected: {
+    backgroundColor: 'rgba(245, 158, 11, 0.2)',
+    borderColor: '#F59E0B',
+  },
+  machineCheckbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: '#6B7280',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
+  },
+  machineCheckboxSelected: {
+    backgroundColor: '#F59E0B',
+    borderColor: '#F59E0B',
+  },
+  machineOptionInfo: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  machineOptionName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  machineOptionNameSelected: {
+    color: '#F59E0B',
+  },
+  machineOptionDetails: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    marginTop: 2,
+  },
+  selectedMachinesCount: {
+    fontSize: 13,
+    color: '#F59E0B',
+    fontWeight: '500',
+    marginTop: 4,
+  },
+  assignedMachineRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  assignedMachineName: {
+    fontSize: 15,
+    color: '#FFFFFF',
+    marginLeft: 10,
+    fontWeight: '500',
+  },
+  // Operator filter toggle styles
+  operatorFilterContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+  },
+  myJobsToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    alignSelf: 'flex-start',
+  },
+  myJobsToggleText: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  // Assigned Operator styles
+  assignedOperatorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  operatorAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#3B82F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  assignedOperatorName: {
+    fontSize: 15,
+    color: '#FFFFFF',
+    marginLeft: 10,
+    fontWeight: '500',
+  },
+  // Action buttons styles
+  actionButtonsContainer: {
+    marginTop: 20,
+    marginBottom: 40,
+    gap: 12,
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    gap: 10,
+  },
+  startButton: {
+    backgroundColor: '#3B82F6',
+  },
+  completeButton: {
+    backgroundColor: '#22C55E',
+  },
+  completedInfo: {
+    backgroundColor: 'rgba(34, 197, 94, 0.15)',
+    borderWidth: 1,
+    borderColor: '#22C55E',
+  },
+  actionButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
 });

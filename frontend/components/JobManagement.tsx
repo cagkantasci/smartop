@@ -98,6 +98,7 @@ export const JobManagement: React.FC<JobManagementProps> = ({
     priority: 'medium' as Job['priority'],
     progress: 0,
     assignedMachineIds: [] as string[],
+    assignedOperatorIds: [] as string[],
     coordinates: { lat: 41.0082, lng: 28.9784 } // Default Istanbul
   });
 
@@ -144,6 +145,17 @@ export const JobManagement: React.FC<JobManagementProps> = ({
     });
   };
 
+  const handleOperatorToggle = (operatorId: string) => {
+    setFormData(prev => {
+      const isSelected = prev.assignedOperatorIds.includes(operatorId);
+      if (isSelected) {
+        return { ...prev, assignedOperatorIds: prev.assignedOperatorIds.filter(id => id !== operatorId) };
+      } else {
+        return { ...prev, assignedOperatorIds: [...prev.assignedOperatorIds, operatorId] };
+      }
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -160,6 +172,7 @@ export const JobManagement: React.FC<JobManagementProps> = ({
         priority: formData.priority,
         progress: formData.progress,
         assignedMachineIds: formData.assignedMachineIds,
+        assignedOperatorIds: formData.assignedOperatorIds,
         coordinates: formData.coordinates
       };
 
@@ -184,6 +197,7 @@ export const JobManagement: React.FC<JobManagementProps> = ({
       priority: 'medium',
       progress: 0,
       assignedMachineIds: [],
+      assignedOperatorIds: [],
       coordinates: { lat: 41.0082, lng: 28.9784 }
     });
   };
@@ -210,6 +224,7 @@ export const JobManagement: React.FC<JobManagementProps> = ({
       priority: job.priority || 'medium',
       progress: job.progress,
       assignedMachineIds: job.assignedMachineIds,
+      assignedOperatorIds: job.assignedOperatorIds || [],
       coordinates: job.coordinates || { lat: 41.0082, lng: 28.9784 }
     });
     setIsEditModalOpen(true);
@@ -233,6 +248,7 @@ export const JobManagement: React.FC<JobManagementProps> = ({
         priority: formData.priority,
         progress: formData.progress,
         assignedMachineIds: formData.assignedMachineIds,
+        assignedOperatorIds: formData.assignedOperatorIds,
         coordinates: formData.coordinates
       };
 
@@ -713,6 +729,28 @@ export const JobManagement: React.FC<JobManagementProps> = ({
                 </div>
               </div>
 
+              {/* Assigned Operators */}
+              <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 border border-blue-100 dark:border-blue-800">
+                <h4 className="text-xs font-bold text-smart-navy dark:text-white uppercase mb-3 flex items-center gap-2">
+                  <User size={14} />
+                  Atanan Operatörler ({job.assignedOperatorIds?.length || 0})
+                </h4>
+                <div className="flex flex-wrap gap-2">
+                  {job.assignedOperatorIds?.map(oid => {
+                    const operator = operators.find(o => o.id === oid);
+                    return operator ? (
+                      <div key={oid} className="bg-white dark:bg-slate-600 border border-blue-200 dark:border-blue-700 text-gray-600 dark:text-gray-200 text-xs px-2 py-1 rounded shadow-sm flex items-center gap-1">
+                        <User size={10} className="text-blue-500" />
+                        <span>{operator.name}</span>
+                      </div>
+                    ) : null;
+                  })}
+                  {(!job.assignedOperatorIds || job.assignedOperatorIds.length === 0) && (
+                    <span className="text-xs text-gray-400 italic">Henüz operatör atanmadı.</span>
+                  )}
+                </div>
+              </div>
+
               <div className="mt-4 pt-4 border-t border-gray-100 dark:border-slate-700 flex justify-between items-center text-sm">
                 <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
                   <Calendar size={16} />
@@ -961,6 +999,47 @@ export const JobManagement: React.FC<JobManagementProps> = ({
                 </div>
               </div>
 
+              {/* Operator Selection */}
+              <div>
+                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
+                  Operatör Ata
+                </label>
+                <div className="border border-gray-200 dark:border-slate-600 rounded-lg p-4 max-h-48 overflow-y-auto">
+                  {operators.length === 0 ? (
+                    <p className="text-gray-400 text-sm italic">Henüz operatör eklenmemiş.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {operators.map(operator => (
+                        <label
+                          key={operator.id}
+                          className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${
+                            formData.assignedOperatorIds.includes(operator.id)
+                              ? 'bg-blue-500/20 border-blue-500 border'
+                              : 'bg-gray-50 dark:bg-slate-700 hover:bg-gray-100 dark:hover:bg-slate-600 border border-transparent'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={formData.assignedOperatorIds.includes(operator.id)}
+                            onChange={() => handleOperatorToggle(operator.id)}
+                            className="w-5 h-5 rounded border-gray-300 text-blue-500 focus:ring-blue-500"
+                          />
+                          <div className="flex items-center gap-3 flex-1">
+                            <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
+                              <User size={16} className="text-blue-600 dark:text-blue-400" />
+                            </div>
+                            <div>
+                              <p className="font-medium text-smart-navy dark:text-white">{operator.name}</p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400">{operator.licenseType?.join(', ') || 'Lisans bilgisi yok'}</p>
+                            </div>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
               {/* Actions */}
               <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-slate-700">
                 <button
@@ -1107,6 +1186,35 @@ export const JobManagement: React.FC<JobManagementProps> = ({
                       })}
                       {selectedJob.assignedMachineIds.length === 0 && (
                         <p className="text-gray-400 italic text-sm">Henüz makine atanmadı.</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Assigned Operators */}
+                  <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 uppercase font-bold mb-3 flex items-center gap-2">
+                      <User size={14} />
+                      Atanan Operatörler ({selectedJob.assignedOperatorIds?.length || 0})
+                    </p>
+                    <div className="space-y-2">
+                      {selectedJob.assignedOperatorIds?.map(oid => {
+                        const operator = operators.find(o => o.id === oid);
+                        return operator ? (
+                          <div key={oid} className="bg-white dark:bg-slate-600 rounded-lg p-3 border border-blue-200 dark:border-blue-700">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
+                                <User size={18} className="text-blue-600 dark:text-blue-400" />
+                              </div>
+                              <div>
+                                <p className="font-bold text-smart-navy dark:text-white">{operator.name}</p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">{operator.licenseType?.join(', ') || 'Lisans bilgisi yok'}</p>
+                              </div>
+                            </div>
+                          </div>
+                        ) : null;
+                      })}
+                      {(!selectedJob.assignedOperatorIds || selectedJob.assignedOperatorIds.length === 0) && (
+                        <p className="text-gray-400 italic text-sm">Henüz operatör atanmadı.</p>
                       )}
                     </div>
                   </div>
@@ -1431,6 +1539,47 @@ export const JobManagement: React.FC<JobManagementProps> = ({
                           {machine.location && (
                             <MapPin size={14} className="text-gray-400" title={machine.location.address} />
                           )}
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Operator Selection */}
+              <div>
+                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
+                  Operatör Ata
+                </label>
+                <div className="border border-gray-200 dark:border-slate-600 rounded-lg p-4 max-h-48 overflow-y-auto">
+                  {operators.length === 0 ? (
+                    <p className="text-gray-400 text-sm italic">Henüz operatör eklenmemiş.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {operators.map(operator => (
+                        <label
+                          key={operator.id}
+                          className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${
+                            formData.assignedOperatorIds.includes(operator.id)
+                              ? 'bg-blue-500/20 border-blue-500 border'
+                              : 'bg-gray-50 dark:bg-slate-700 hover:bg-gray-100 dark:hover:bg-slate-600 border border-transparent'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={formData.assignedOperatorIds.includes(operator.id)}
+                            onChange={() => handleOperatorToggle(operator.id)}
+                            className="w-5 h-5 rounded border-gray-300 text-blue-500 focus:ring-blue-500"
+                          />
+                          <div className="flex items-center gap-3 flex-1">
+                            <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
+                              <User size={16} className="text-blue-600 dark:text-blue-400" />
+                            </div>
+                            <div>
+                              <p className="font-medium text-smart-navy dark:text-white">{operator.name}</p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400">{operator.licenseType?.join(', ') || 'Lisans bilgisi yok'}</p>
+                            </div>
+                          </div>
                         </label>
                       ))}
                     </div>

@@ -177,13 +177,12 @@ const tr = {
     subtitle: 'Makine seçin',
     instruction: 'Kontrol yapmak istediğiniz makineyi seçin',
     progress: '{checked}/{total} kontrol tamamlandı',
-    complete: 'Kontrolü Tamamla',
     issueReported: '{count} sorun bildirildi',
     hasIssue: 'Sorun Var',
     describeIssue: 'Sorunu açıklayın...',
     success: {
-      title: 'Kontrol Tamamlandı!',
-      message: '{machine} için günlük kontrol başarıyla kaydedildi.',
+      title: 'Onaya Gönderildi!',
+      message: '{machine} için kontrol listesi yönetici onayına gönderildi.',
       newCheck: 'Yeni Kontrol Başlat',
     },
     empty: {
@@ -194,10 +193,43 @@ const tr = {
       incomplete: 'Eksik Kontrol',
       incompleteMessage: '{count} kontrol maddesi işaretlenmedi. Yine de göndermek istiyor musunuz?',
       send: 'Gönder',
+      cancelTitle: 'İşi İptal Et',
+      cancelMessage: 'İşi iptal etmek istediğinizden emin misiniz? Tüm veriler silinecek.',
     },
     messages: {
       loadError: 'Kontrol listesi yüklenemedi',
       submitError: 'Kontrol listesi gönderilemedi',
+    },
+    machineHours: {
+      title: 'Makine Saati',
+      start: 'Başlangıç Saati',
+      end: 'Bitiş Saati',
+      placeholder: '0',
+      current: 'Mevcut saat',
+      enterHours: 'Saat değerini girin',
+    },
+    validation: {
+      startHoursRequired: 'Başlangıç saati zorunludur',
+      endHoursRequired: 'Bitiş saati zorunludur',
+    },
+    startWork: {
+      subtitle: 'İşi başlat',
+      title: 'İşe Başla',
+      description: 'İşe başlamadan önce makinenin mevcut saat değerini girin.',
+      button: 'İşi Başlat',
+    },
+    finishWork: {
+      subtitle: 'İşi bitir',
+      title: 'İşi Tamamla',
+      description: 'İşi tamamlamak için bitiş saat değerini girin ve yönetici onayına gönderin.',
+      button: 'İşi Bitir',
+      submitButton: 'Yönetici Onayına Gönder',
+    },
+    activeWork: {
+      inProgress: 'İş Devam Ediyor',
+    },
+    summary: {
+      issues: 'Bildirilen Sorun',
     },
   },
 
@@ -626,13 +658,12 @@ const en = {
     subtitle: 'Select a machine',
     instruction: 'Select the machine you want to check',
     progress: '{checked}/{total} checks completed',
-    complete: 'Complete Checklist',
     issueReported: '{count} issues reported',
     hasIssue: 'Has Issue',
     describeIssue: 'Describe the issue...',
     success: {
-      title: 'Checklist Completed!',
-      message: 'Daily check for {machine} has been saved successfully.',
+      title: 'Sent for Approval!',
+      message: 'Checklist for {machine} has been sent to manager for approval.',
       newCheck: 'Start New Check',
     },
     empty: {
@@ -643,10 +674,43 @@ const en = {
       incomplete: 'Incomplete Checklist',
       incompleteMessage: '{count} items are not checked. Do you still want to submit?',
       send: 'Submit',
+      cancelTitle: 'Cancel Work',
+      cancelMessage: 'Are you sure you want to cancel? All data will be lost.',
     },
     messages: {
       loadError: 'Failed to load checklist',
       submitError: 'Failed to submit checklist',
+    },
+    machineHours: {
+      title: 'Machine Hours',
+      start: 'Start Hours',
+      end: 'End Hours',
+      placeholder: '0',
+      current: 'Current hours',
+      enterHours: 'Enter hours value',
+    },
+    validation: {
+      startHoursRequired: 'Start hours is required',
+      endHoursRequired: 'End hours is required',
+    },
+    startWork: {
+      subtitle: 'Start work',
+      title: 'Start Work',
+      description: 'Enter the current machine hours before starting work.',
+      button: 'Start Work',
+    },
+    finishWork: {
+      subtitle: 'Finish work',
+      title: 'Complete Work',
+      description: 'Enter the end hours to complete work and send for manager approval.',
+      button: 'Finish Work',
+      submitButton: 'Send for Manager Approval',
+    },
+    activeWork: {
+      inProgress: 'Work in Progress',
+    },
+    summary: {
+      issues: 'Reported Issues',
     },
   },
 

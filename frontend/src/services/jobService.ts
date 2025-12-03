@@ -19,7 +19,7 @@ export interface Job {
   actualHours?: number;
   createdById: string;
   organizationId: string;
-  assignments?: JobAssignment[];
+  jobAssignments?: JobAssignment[];
   createdAt: string;
   updatedAt: string;
 }

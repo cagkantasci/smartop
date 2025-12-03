@@ -1,9 +1,19 @@
 
+// Backend ile uyumlu değerler
 export enum MachineStatus {
-  Active = 'Aktif',
-  Maintenance = 'Bakımda',
-  Idle = 'Boşta'
+  Active = 'active',
+  Idle = 'idle',
+  Maintenance = 'maintenance',
+  OutOfService = 'out_of_service'
 }
+
+// UI'da gösterim için Türkçe etiketler
+export const MachineStatusLabels: Record<MachineStatus, string> = {
+  [MachineStatus.Active]: 'Aktif',
+  [MachineStatus.Idle]: 'Boşta',
+  [MachineStatus.Maintenance]: 'Bakımda',
+  [MachineStatus.OutOfService]: 'Servis Dışı'
+};
 
 export enum ChecklistStatus {
   Pending = 'Bekliyor',
@@ -83,6 +93,7 @@ export interface Job {
   progress: number; // 0-100
   priority?: 'low' | 'medium' | 'high' | 'urgent';
   assignedMachineIds: string[];
+  assignedOperatorIds: string[];
   startDate: string;
   endDate?: string;
   coordinates?: {

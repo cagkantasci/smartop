@@ -177,7 +177,8 @@ const convertAPIJobToJob = (apiJob: APIJob): Job => ({
   priority: mapJobPriority(apiJob.priority),
   startDate: apiJob.scheduledStart?.split('T')[0] || apiJob.createdAt?.split('T')[0] || '',
   endDate: apiJob.scheduledEnd?.split('T')[0],
-  assignedMachineIds: apiJob.assignments?.map(a => a.machineId) || [],
+  assignedMachineIds: apiJob.jobAssignments?.filter(a => a.machineId).map(a => a.machineId) || [],
+  assignedOperatorIds: apiJob.jobAssignments?.filter(a => a.operatorId).map(a => a.operatorId) || [],
   coordinates: apiJob.locationLat && apiJob.locationLng ? {
     lat: apiJob.locationLat,
     lng: apiJob.locationLng,
@@ -391,6 +392,7 @@ const App: React.FC = () => {
       brand: updatedMachine.brand,
       model: updatedMachine.model,
       engineHours: updatedMachine.engineHours,
+      status: updatedMachine.status, // Backend'e status değerini gönder
     };
 
     // Handle assignedOperatorId - send null to clear, valid UUID to set, or undefined to not change
@@ -485,15 +487,18 @@ const App: React.FC = () => {
       scheduledEnd: job.endDate ? new Date(job.endDate).toISOString() : undefined,
     }, {
       onSuccess: (createdJob) => {
-        // If machines were selected, assign them to the job
-        if (job.assignedMachineIds && job.assignedMachineIds.length > 0) {
+        // If machines or operators were selected, assign them to the job
+        const hasMachines = job.assignedMachineIds && job.assignedMachineIds.length > 0;
+        const hasOperators = job.assignedOperatorIds && job.assignedOperatorIds.length > 0;
+
+        if (hasMachines || hasOperators) {
           assignJobMutation.mutate({
             jobId: createdJob.id,
-            machineIds: job.assignedMachineIds,
-            operatorIds: [],
+            machineIds: job.assignedMachineIds || [],
+            operatorIds: job.assignedOperatorIds || [],
           }, {
-            onSuccess: () => toast.success('İş başarıyla eklendi ve makineler atandı'),
-            onError: () => toast.error('İş eklendi fakat makine ataması başarısız oldu'),
+            onSuccess: () => toast.success('İş başarıyla eklendi ve atamalar yapıldı'),
+            onError: () => toast.error('İş eklendi fakat atama başarısız oldu'),
           });
         } else {
           toast.success('İş başarıyla eklendi');
@@ -521,15 +526,18 @@ const App: React.FC = () => {
       }
     }, {
       onSuccess: () => {
-        // Update machine assignments if provided
-        if (updatedJob.assignedMachineIds !== undefined) {
+        // Update machine and operator assignments if provided
+        const hasMachines = updatedJob.assignedMachineIds !== undefined;
+        const hasOperators = updatedJob.assignedOperatorIds !== undefined;
+
+        if (hasMachines || hasOperators) {
           assignJobMutation.mutate({
             jobId: updatedJob.id,
-            machineIds: updatedJob.assignedMachineIds,
-            operatorIds: [],
+            machineIds: updatedJob.assignedMachineIds || [],
+            operatorIds: updatedJob.assignedOperatorIds || [],
           }, {
             onSuccess: () => toast.success('İş başarıyla güncellendi'),
-            onError: () => toast.error('İş güncellendi fakat makine ataması başarısız oldu'),
+            onError: () => toast.error('İş güncellendi fakat atama başarısız oldu'),
           });
         } else {
           toast.success('İş başarıyla güncellendi');

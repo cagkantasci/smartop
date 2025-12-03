@@ -23,6 +23,8 @@ interface ChecklistItemState extends ChecklistItem {
   hasIssue: boolean;
 }
 
+type Step = 'select' | 'fill' | 'complete';
+
 export function ChecklistScreen() {
   const navigation = useNavigation<any>();
   const { theme } = useTheme();
@@ -32,21 +34,23 @@ export function ChecklistScreen() {
 
   const canManageTemplates = user?.role === 'admin' || user?.role === 'manager';
 
-  const [step, setStep] = useState<'select' | 'fill' | 'complete'>('select');
+  const [step, setStep] = useState<Step>('select');
   const [machines, setMachines] = useState<Machine[]>([]);
   const [selectedMachine, setSelectedMachine] = useState<Machine | null>(null);
   const [template, setTemplate] = useState<ChecklistTemplate | null>(null);
   const [items, setItems] = useState<ChecklistItemState[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [startHours, setStartHours] = useState('');
 
   useEffect(() => {
     loadMachines();
   }, []);
 
+  const isOperator = user?.role === 'operator';
+
   const loadMachines = async () => {
     try {
       const response = await machinesApi.getAll({ status: 'active' });
-      // Handle different response formats safely
       let machinesArray: Machine[] = [];
       if (Array.isArray(response)) {
         machinesArray = response;
@@ -55,6 +59,13 @@ export function ChecklistScreen() {
       } else if (response && Array.isArray(response.data)) {
         machinesArray = response.data;
       }
+
+      if (isOperator && user?.id) {
+        machinesArray = machinesArray.filter(
+          (m: Machine) => m.assignedOperatorId === user.id
+        );
+      }
+
       setMachines(machinesArray);
     } catch (error) {
       console.error('Failed to load machines:', error);
@@ -65,10 +76,13 @@ export function ChecklistScreen() {
   const selectMachine = async (machine: Machine) => {
     setSelectedMachine(machine);
 
-    // Load checklist template for machine type
+    if (!machine.checklistTemplateId) {
+      Alert.alert(t.common.warning, t.checklist.empty.noTemplate);
+      return;
+    }
+
     try {
       const response = await checklistsApi.getTemplates();
-      // Handle different response formats safely
       let templatesArray: ChecklistTemplate[] = [];
       if (Array.isArray(response)) {
         templatesArray = response;
@@ -78,8 +92,9 @@ export function ChecklistScreen() {
         templatesArray = response.data;
       }
 
-      // For now, use the first available template
-      const machineTemplate = templatesArray[0];
+      const machineTemplate = templatesArray.find(
+        (t) => t.id === machine.checklistTemplateId
+      );
 
       if (machineTemplate && machineTemplate.items) {
         setTemplate(machineTemplate);
@@ -100,6 +115,7 @@ export function ChecklistScreen() {
       Alert.alert(t.common.error, t.checklist.messages.loadError);
     }
   };
+
 
   const toggleItem = (index: number) => {
     setItems((prev) =>
@@ -124,6 +140,11 @@ export function ChecklistScreen() {
   };
 
   const handleSubmit = async () => {
+    if (!startHours.trim()) {
+      Alert.alert(t.common.warning, t.checklist.validation.startHoursRequired);
+      return;
+    }
+
     const uncheckedItems = items.filter((item) => !item.checked);
     if (uncheckedItems.length > 0) {
       Alert.alert(
@@ -144,15 +165,13 @@ export function ChecklistScreen() {
 
     setIsSubmitting(true);
     try {
-      // Convert mobile format to backend expected format
       const entries = items.map((item) => ({
         itemId: item.id,
         label: item.label,
-        isOk: item.checked && !item.hasIssue, // isOk = checked and no issue
+        isOk: item.checked && !item.hasIssue,
         value: item.hasIssue ? item.notes : undefined,
       }));
 
-      // Combine notes from issues
       const issueNotes = items
         .filter((item) => item.hasIssue && item.notes)
         .map((item) => `${item.label}: ${item.notes}`)
@@ -163,6 +182,7 @@ export function ChecklistScreen() {
         templateId: template.id,
         entries,
         notes: issueNotes || undefined,
+        startHours: parseFloat(startHours),
       });
 
       setStep('complete');
@@ -179,9 +199,10 @@ export function ChecklistScreen() {
     setSelectedMachine(null);
     setTemplate(null);
     setItems([]);
+    setStartHours('');
   };
 
-  // Machine Selection Screen
+  // ========== STEP 1: Machine Selection ==========
   if (step === 'select') {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
@@ -230,21 +251,65 @@ export function ChecklistScreen() {
     );
   }
 
-  // Checklist Fill Screen
+  // ========== STEP 2: Fill Checklist ==========
   if (step === 'fill') {
     const issueCount = items.filter((item) => item.hasIssue).length;
     const checkedCount = items.filter((item) => item.checked).length;
 
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
         <Header
           title={selectedMachine?.name || t.checklist.title}
           subtitle={interpolate(t.checklist.progress, { checked: checkedCount, total: items.length })}
           showBack
-          onBackPress={() => setStep('select')}
+          onBackPress={() => {
+            Alert.alert(
+              t.checklist.confirm.cancelTitle,
+              t.checklist.confirm.cancelMessage,
+              [
+                { text: t.common.cancel, style: 'cancel' },
+                { text: t.common.confirm, onPress: resetForm },
+              ]
+            );
+          }}
         />
 
-        <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* Machine Hours Input */}
+          <Card style={[styles.hoursCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+            <View style={styles.hoursHeader}>
+              <Ionicons name="speedometer-outline" size={24} color={colors.primary} />
+              <Text style={[styles.hoursTitle, { color: colors.text }]}>
+                {t.checklist.machineHours.title}
+              </Text>
+            </View>
+            {selectedMachine?.engineHours && (
+              <Text style={[styles.currentHoursInfo, { color: colors.textSecondary }]}>
+                {t.checklist.machineHours.current}: {selectedMachine.engineHours} {t.machines.fields.hours}
+              </Text>
+            )}
+            <View style={styles.hoursInputRow}>
+              <Text style={[styles.inputLabel, { color: colors.text }]}>
+                {t.checklist.machineHours.start} *
+              </Text>
+              <Input
+                placeholder={t.checklist.machineHours.enterHours}
+                value={startHours}
+                onChangeText={setStartHours}
+                keyboardType="numeric"
+                containerStyle={styles.hoursInput}
+              />
+            </View>
+          </Card>
+
+          {/* Checklist Section Title */}
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+            {t.checklist.title}
+          </Text>
           {items.map((item, index) => (
             <Card key={item.id} style={[styles.checklistItem, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
               <TouchableOpacity
@@ -309,29 +374,32 @@ export function ChecklistScreen() {
               )}
             </Card>
           ))}
-        </ScrollView>
 
-        <View style={[styles.footer, { backgroundColor: colors.card, borderTopColor: colors.cardBorder }]}>
-          {issueCount > 0 && (
-            <View style={styles.issueWarning}>
-              <Ionicons name="warning" size={20} color={colors.warning} />
-              <Text style={[styles.issueWarningText, { color: colors.warning }]}>
-                {interpolate(t.checklist.issueReported, { count: issueCount })}
-              </Text>
-            </View>
-          )}
-          <Button
-            title={t.checklist.complete}
-            onPress={handleSubmit}
-            loading={isSubmitting}
-            fullWidth
-          />
-        </View>
+          {/* Submit Button - inside scroll, after checklist items */}
+          <View style={styles.submitSection}>
+            {issueCount > 0 && (
+              <View style={styles.issueWarning}>
+                <Ionicons name="warning" size={20} color={colors.warning} />
+                <Text style={[styles.issueWarningText, { color: colors.warning }]}>
+                  {interpolate(t.checklist.issueReported, { count: issueCount })}
+                </Text>
+              </View>
+            )}
+            <Button
+              title={t.checklist.finishWork.submitButton}
+              onPress={handleSubmit}
+              loading={isSubmitting}
+              fullWidth
+              variant="success"
+              icon={<Ionicons name="send" size={20} color="#FFFFFF" />}
+            />
+          </View>
+        </ScrollView>
       </SafeAreaView>
     );
   }
 
-  // Complete Screen
+  // ========== STEP 3: Complete ==========
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       <View style={styles.completeContainer}>
@@ -362,11 +430,11 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 16,
-    paddingBottom: 100,
+    paddingBottom: 40,
   },
   instruction: {
     fontSize: 15,
-        marginBottom: 16,
+    marginBottom: 16,
   },
   machineCard: {
     marginBottom: 10,
@@ -390,10 +458,10 @@ const styles = StyleSheet.create({
   machineName: {
     fontSize: 16,
     fontWeight: '600',
-      },
+  },
   machineDetails: {
     fontSize: 13,
-        marginTop: 2,
+    marginTop: 2,
   },
   emptyCard: {
     alignItems: 'center',
@@ -401,8 +469,95 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 15,
-        marginTop: 12,
+    marginTop: 12,
   },
+  // Start Work Screen
+  startContainer: {
+    flex: 1,
+    padding: 16,
+    justifyContent: 'center',
+  },
+  startCard: {
+    alignItems: 'center',
+    padding: 24,
+  },
+  startIconContainer: {
+    marginBottom: 16,
+  },
+  startTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  startDescription: {
+    fontSize: 15,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  currentHoursBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 20,
+    width: '100%',
+    justifyContent: 'center',
+  },
+  currentHoursText: {
+    fontSize: 14,
+    marginLeft: 8,
+  },
+  startInputContainer: {
+    width: '100%',
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  startInput: {
+    marginBottom: 0,
+  },
+  startScrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    padding: 16,
+  },
+  startButton: {
+    marginTop: 24,
+  },
+  // Hours Card (at top of fill screen)
+  hoursCard: {
+    marginBottom: 16,
+  },
+  hoursHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  hoursTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 10,
+  },
+  currentHoursInfo: {
+    fontSize: 13,
+    marginBottom: 12,
+  },
+  hoursInputRow: {
+    width: '100%',
+  },
+  hoursInput: {
+    marginBottom: 0,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 12,
+    marginTop: 8,
+  },
+  // Checklist Items
   checklistItem: {
     marginBottom: 12,
   },
@@ -426,16 +581,13 @@ const styles = StyleSheet.create({
   checklistLabel: {
     flex: 1,
     fontSize: 15,
-        marginLeft: 12,
-  },
-  checklistLabelChecked: {
-        fontWeight: '500',
+    marginLeft: 12,
   },
   checklistActions: {
     marginTop: 12,
     paddingTop: 12,
     borderTopWidth: 1,
-      },
+  },
   issueButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -461,10 +613,13 @@ const styles = StyleSheet.create({
     marginTop: 12,
     marginBottom: 0,
   },
-  footer: {
-    padding: 16,
-        borderTopWidth: 1,
-      },
+  // Submit Section (inside scroll)
+  submitSection: {
+    marginTop: 24,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.1)',
+  },
   issueWarning: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -473,9 +628,58 @@ const styles = StyleSheet.create({
   },
   issueWarningText: {
     fontSize: 14,
-        fontWeight: '500',
+    fontWeight: '500',
     marginLeft: 8,
   },
+  // Finish Work Screen
+  finishContainer: {
+    flex: 1,
+    padding: 16,
+    justifyContent: 'center',
+  },
+  finishCard: {
+    alignItems: 'center',
+    padding: 24,
+  },
+  finishIconContainer: {
+    marginBottom: 16,
+  },
+  finishTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  finishDescription: {
+    fontSize: 15,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  summaryBox: {
+    width: '100%',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 20,
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  summaryLabel: {
+    fontSize: 14,
+  },
+  summaryValue: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  finishInputContainer: {
+    width: '100%',
+  },
+  finishInput: {
+    marginBottom: 0,
+  },
+  // Complete Screen
   completeContainer: {
     flex: 1,
     alignItems: 'center',
@@ -488,11 +692,11 @@ const styles = StyleSheet.create({
   successTitle: {
     fontSize: 24,
     fontWeight: '700',
-        marginBottom: 8,
+    marginBottom: 8,
   },
   successMessage: {
     fontSize: 15,
-        textAlign: 'center',
+    textAlign: 'center',
     marginBottom: 32,
   },
   newCheckButton: {

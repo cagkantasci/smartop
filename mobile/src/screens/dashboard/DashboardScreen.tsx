@@ -93,11 +93,14 @@ export function DashboardScreen() {
     j => j.locationLat && j.locationLng
   );
 
+  const isOperator = user?.role === 'operator';
+
   const fetchData = async () => {
     try {
+      // Operatör için sadece kendine atanan makineler ve işleri getir
       const [machinesRes, jobsRes] = await Promise.all([
-        machinesApi.getAll({ limit: 5 }),
-        jobsApi.getAll({ limit: 5, status: 'in_progress' }),
+        machinesApi.getAll({ limit: 10 }),
+        jobsApi.getAll({ limit: 10 }),
       ]);
 
       // Handle different response formats safely for machines
@@ -109,7 +112,14 @@ export function DashboardScreen() {
       } else if (machinesRes && Array.isArray(machinesRes.data)) {
         machinesArray = machinesRes.data;
       }
-      setRecentMachines(machinesArray);
+
+      // Operatör için sadece kendine atanan makineleri filtrele
+      if (isOperator && user?.id) {
+        machinesArray = machinesArray.filter(
+          (m: Machine) => m.assignedOperatorId === user.id
+        );
+      }
+      setRecentMachines(machinesArray.slice(0, 5));
 
       // Handle different response formats safely for jobs
       let jobsArray: Job[] = [];
@@ -120,13 +130,21 @@ export function DashboardScreen() {
       } else if (jobsRes && Array.isArray(jobsRes.data)) {
         jobsArray = jobsRes.data;
       }
-      setActiveJobs(jobsArray);
+
+      // Operatör için sadece kendine atanan işleri filtrele
+      if (isOperator && user?.id) {
+        jobsArray = jobsArray.filter(
+          (j: Job) => j.assignments?.some((a: any) => a.userId === user.id) ||
+                      j.assignedTo === user.id
+        );
+      }
+      setActiveJobs(jobsArray.slice(0, 5));
 
       // Calculate stats
       setStats({
         activeMachines: machinesArray.filter((m: Machine) => m.status === 'active').length || 0,
         pendingChecklists: 3, // Would come from API
-        activeJobs: jobsArray.length || 0,
+        activeJobs: jobsArray.filter((j: Job) => j.status === 'in_progress').length || 0,
         alerts: 2, // Would come from API
       });
     } catch (error) {
@@ -177,10 +195,10 @@ export function DashboardScreen() {
         }
         showsVerticalScrollIndicator={false}
       >
-        {/* Stats Grid */}
+        {/* Stats Grid - Operatör için farklı kartlar */}
         <View style={styles.statsGrid}>
           <StatCard
-            title={t.dashboard.stats.activeMachines}
+            title={isOperator ? t.dashboard.stats.myMachines || 'Makinelerim' : t.dashboard.stats.activeMachines}
             value={stats?.activeMachines || 0}
             icon="construct"
             color="#22C55E"
@@ -188,7 +206,7 @@ export function DashboardScreen() {
             textColor={colors.text}
             textSecondaryColor={colors.textSecondary}
             borderColor={colors.cardBorder}
-            onPress={() => navigation.navigate('Machines')}
+            onPress={isOperator ? undefined : () => navigation.navigate('Machines')}
           />
           <StatCard
             title={t.dashboard.stats.pendingChecklists}
@@ -202,7 +220,7 @@ export function DashboardScreen() {
             onPress={() => navigation.navigate('Checklist')}
           />
           <StatCard
-            title={t.dashboard.stats.activeJobs}
+            title={isOperator ? t.dashboard.stats.myJobs || 'İşlerim' : t.dashboard.stats.activeJobs}
             value={stats?.activeJobs || 0}
             icon="briefcase-outline"
             color="#3B82F6"
@@ -210,19 +228,21 @@ export function DashboardScreen() {
             textColor={colors.text}
             textSecondaryColor={colors.textSecondary}
             borderColor={colors.cardBorder}
-            onPress={() => navigation.navigate('Jobs')}
+            onPress={isOperator ? undefined : () => navigation.navigate('Jobs')}
           />
-          <StatCard
-            title={t.dashboard.stats.alerts}
-            value={stats?.alerts || 0}
-            icon="warning-outline"
-            color="#EF4444"
-            bgColor="rgba(239, 68, 68, 0.15)"
-            textColor={colors.text}
-            textSecondaryColor={colors.textSecondary}
-            borderColor={colors.cardBorder}
-            onPress={() => navigation.navigate('Approvals')}
-          />
+          {!isOperator && (
+            <StatCard
+              title={t.dashboard.stats.alerts}
+              value={stats?.alerts || 0}
+              icon="warning-outline"
+              color="#EF4444"
+              bgColor="rgba(239, 68, 68, 0.15)"
+              textColor={colors.text}
+              textSecondaryColor={colors.textSecondary}
+              borderColor={colors.cardBorder}
+              onPress={() => navigation.navigate('Approvals')}
+            />
+          )}
         </View>
 
         {/* Map Section */}
@@ -337,13 +357,17 @@ export function DashboardScreen() {
           )}
         </View>
 
-        {/* Recent Machines */}
+        {/* Makineler - Operatör için "Atanan Makinelerim" */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>{t.dashboard.sections.machines}</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Machines')}>
-              <Text style={[styles.seeAll, { color: colors.primary }]}>{t.dashboard.sections.seeAll}</Text>
-            </TouchableOpacity>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              {isOperator ? (t.dashboard.sections.myMachines || 'Atanan Makinelerim') : t.dashboard.sections.machines}
+            </Text>
+            {!isOperator && (
+              <TouchableOpacity onPress={() => navigation.navigate('Machines')}>
+                <Text style={[styles.seeAll, { color: colors.primary }]}>{t.dashboard.sections.seeAll}</Text>
+              </TouchableOpacity>
+            )}
           </View>
 
           {recentMachines.length > 0 ? (
@@ -362,18 +386,24 @@ export function DashboardScreen() {
             ))
           ) : (
             <Card style={[styles.emptyCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
-              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>{t.dashboard.empty.machines}</Text>
+              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+                {isOperator ? (t.dashboard.empty.noAssignedMachines || 'Size atanmış makine bulunmuyor') : t.dashboard.empty.machines}
+              </Text>
             </Card>
           )}
         </View>
 
-        {/* Active Jobs */}
+        {/* İşler - Operatör için "Atanan İşlerim" */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>{t.dashboard.sections.activeJobs}</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Jobs')}>
-              <Text style={[styles.seeAll, { color: colors.primary }]}>{t.dashboard.sections.seeAll}</Text>
-            </TouchableOpacity>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              {isOperator ? (t.dashboard.sections.myJobs || 'Atanan İşlerim') : t.dashboard.sections.activeJobs}
+            </Text>
+            {!isOperator && (
+              <TouchableOpacity onPress={() => navigation.navigate('Jobs')}>
+                <Text style={[styles.seeAll, { color: colors.primary }]}>{t.dashboard.sections.seeAll}</Text>
+              </TouchableOpacity>
+            )}
           </View>
 
           {activeJobs.length > 0 ? (
@@ -392,7 +422,9 @@ export function DashboardScreen() {
             ))
           ) : (
             <Card style={[styles.emptyCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
-              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>{t.dashboard.empty.jobs}</Text>
+              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+                {isOperator ? (t.dashboard.empty.noAssignedJobs || 'Size atanmış iş bulunmuyor') : t.dashboard.empty.jobs}
+              </Text>
             </Card>
           )}
         </View>

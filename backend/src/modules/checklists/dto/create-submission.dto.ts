@@ -51,4 +51,12 @@ export class CreateSubmissionDto {
   @IsOptional()
   @IsNumber()
   locationLng?: number;
+
+  @IsOptional()
+  @IsNumber()
+  startHours?: number;
+
+  @IsOptional()
+  @IsNumber()
+  endHours?: number;
 }

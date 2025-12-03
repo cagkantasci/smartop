@@ -18,6 +18,7 @@ import { MainTabParamList, MachinesStackParamList, ChecklistStackParamList } fro
 import { useNotifications } from '../context/NotificationContext';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
+import { useAuth } from '../context/AuthContext';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 const MachinesStack = createNativeStackNavigator<MachinesStackParamList>();
@@ -59,7 +60,12 @@ export function MainNavigator() {
   const { counts } = useNotifications();
   const { theme } = useTheme();
   const { t } = useLanguage();
+  const { user } = useAuth();
   const colors = theme.colors;
+
+  // Operatör sadece belirli sekmeleri görebilir
+  const isOperator = user?.role === 'operator';
+  const isManagerOrAdmin = user?.role === 'admin' || user?.role === 'manager';
 
   // Android için bottom inset hesapla - navigation bar üstünde kalması için
   const bottomPadding = Platform.OS === 'ios'
@@ -126,26 +132,35 @@ export function MainNavigator() {
         component={DashboardScreen}
         options={{ tabBarLabel: t.tabs.dashboard }}
       />
-      <Tab.Screen
-        name="Machines"
-        component={MachinesNavigator}
-        options={{ tabBarLabel: t.tabs.machines }}
-      />
-      <Tab.Screen
-        name="Jobs"
-        component={JobsScreen}
-        options={{ tabBarLabel: t.tabs.jobs }}
-      />
+      {/* Operatörler makine listesini göremez */}
+      {isManagerOrAdmin && (
+        <Tab.Screen
+          name="Machines"
+          component={MachinesNavigator}
+          options={{ tabBarLabel: t.tabs.machines }}
+        />
+      )}
+      {/* Operatörler tüm işler sekmesini göremez - sadece atanan işleri Dashboard'da görür */}
+      {isManagerOrAdmin && (
+        <Tab.Screen
+          name="Jobs"
+          component={JobsScreen}
+          options={{ tabBarLabel: t.tabs.jobs }}
+        />
+      )}
       <Tab.Screen
         name="Checklist"
         component={ChecklistNavigator}
         options={{ tabBarLabel: t.tabs.checklist }}
       />
-      <Tab.Screen
-        name="Approvals"
-        component={ApprovalsScreen}
-        options={{ tabBarLabel: t.tabs.approvals }}
-      />
+      {/* Operatörler onay sekmesini göremez */}
+      {isManagerOrAdmin && (
+        <Tab.Screen
+          name="Approvals"
+          component={ApprovalsScreen}
+          options={{ tabBarLabel: t.tabs.approvals }}
+        />
+      )}
       <Tab.Screen
         name="Profile"
         component={ProfileScreen}

@@ -198,10 +198,12 @@ export const checklistsApi = {
   submitChecklist: async (data: {
     machineId: string;
     templateId: string;
-    entries: Array<{ itemId: string; isOk: boolean; value?: string; photoUrl?: string }>;
+    entries: Array<{ itemId: string; label: string; isOk: boolean; value?: string; photoUrl?: string }>;
     notes?: string;
     locationLat?: number;
     locationLng?: number;
+    startHours?: number;
+    endHours?: number;
   }) => {
     const response = await api.post('/checklists/submissions', data);
     return response.data;
@@ -236,8 +238,15 @@ export const jobsApi = {
     locationLng?: number | null;
     priority: string;
     status?: string;
+    machineIds?: string[];
+    operatorIds?: string[];
   }) => {
     const response = await api.post('/jobs', data);
+    return response.data;
+  },
+
+  assignResources: async (id: string, machineIds: string[], operatorIds: string[]) => {
+    const response = await api.post(`/jobs/${id}/assign`, { machineIds, operatorIds });
     return response.data;
   },
 

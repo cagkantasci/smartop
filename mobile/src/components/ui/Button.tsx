@@ -12,7 +12,7 @@ import {
 interface ButtonProps {
   title: string;
   onPress: () => void;
-  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
+  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger' | 'success';
   size?: 'sm' | 'md' | 'lg';
   disabled?: boolean;
   loading?: boolean;
@@ -37,6 +37,7 @@ const variantStyles: Record<string, ViewStyle> = {
   outline: { backgroundColor: 'transparent', borderWidth: 1.5, borderColor: COLORS.border },
   ghost: { backgroundColor: 'transparent' },
   danger: { backgroundColor: '#EF4444' },
+  success: { backgroundColor: '#22C55E' },
 };
 
 const sizeStyles: Record<string, ViewStyle> = {
@@ -51,6 +52,7 @@ const textVariantColors: Record<string, string> = {
   outline: COLORS.text,
   ghost: COLORS.secondary,
   danger: '#FFFFFF',
+  success: '#FFFFFF',
 };
 
 const textSizes: Record<string, number> = {

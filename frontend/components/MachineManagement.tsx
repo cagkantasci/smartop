@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Plus, Search, Fuel, Calendar, Tractor, Truck, Anchor, Hammer, HardHat, User, FileCheck, X, ShoppingCart, CreditCard, CheckCircle, Pencil, Smartphone, Save, Briefcase, UserCog, Check, Percent, Zap, Sparkles, Loader2, RefreshCw, Image as ImageIcon, Trash2, AlertTriangle, MapPin } from 'lucide-react';
-import { Machine, MachineStatus, Operator, ChecklistTemplate, TranslationDictionary } from '../types';
+import { Machine, MachineStatus, MachineStatusLabels, Operator, ChecklistTemplate, TranslationDictionary } from '../types';
 
 interface MachineManagementProps {
   machines: Machine[];
@@ -340,9 +340,9 @@ export const MachineManagement: React.FC<MachineManagementProps> = ({ machines, 
                 <div className="h-48 overflow-hidden relative bg-gray-100 dark:bg-slate-900">
                   <img src={machine.imageUrl} alt={machine.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                   <div className={`absolute top-4 right-4 px-3 py-1 rounded-md text-xs font-bold uppercase tracking-wider shadow-sm border border-white/20 backdrop-blur-md
-                    ${machine.status === 'Aktif' ? 'bg-green-600/90 text-white' : 
-                      machine.status === 'Bakımda' ? 'bg-red-600/90 text-white' : 'bg-gray-600/90 text-white'}`}>
-                    {machine.status}
+                    ${machine.status === MachineStatus.Active ? 'bg-green-600/90 text-white' :
+                      machine.status === MachineStatus.Maintenance ? 'bg-red-600/90 text-white' : 'bg-gray-600/90 text-white'}`}>
+                    {MachineStatusLabels[machine.status as MachineStatus] || machine.status}
                   </div>
                   <div className="absolute top-4 left-4 bg-white/90 dark:bg-black/80 p-2 rounded-lg shadow-sm">
                     {getMachineIcon(machine.type)}
@@ -885,9 +885,10 @@ export const MachineManagement: React.FC<MachineManagementProps> = ({ machines, 
                   onChange={(e) => setEditingMachine({...editingMachine, status: e.target.value as MachineStatus})}
                   className="w-full px-4 py-3 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-smart-navy/20 bg-white dark:bg-slate-700 text-gray-900 dark:text-white outline-none"
                 >
-                  <option value={MachineStatus.Active}>Aktif</option>
-                  <option value={MachineStatus.Idle}>Boşta</option>
-                  <option value={MachineStatus.Maintenance}>Bakımda</option>
+                  <option value={MachineStatus.Active}>{MachineStatusLabels[MachineStatus.Active]}</option>
+                  <option value={MachineStatus.Idle}>{MachineStatusLabels[MachineStatus.Idle]}</option>
+                  <option value={MachineStatus.Maintenance}>{MachineStatusLabels[MachineStatus.Maintenance]}</option>
+                  <option value={MachineStatus.OutOfService}>{MachineStatusLabels[MachineStatus.OutOfService]}</option>
                 </select>
               </div>
 

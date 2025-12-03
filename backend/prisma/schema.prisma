@@ -248,6 +248,8 @@ model ChecklistSubmission {
   entries        Json            @default("[]") // [{item_id, label, is_ok, value, photo_url}]
   issuesCount    Int             @default(0) @map("issues_count")
   notes          String?
+  startHours     Decimal?        @map("start_hours") @db.Decimal(10, 1)
+  endHours       Decimal?        @map("end_hours") @db.Decimal(10, 1)
   locationLat    Decimal?        @map("location_lat") @db.Decimal(10, 8)
   locationLng    Decimal?        @map("location_lng") @db.Decimal(11, 8)
   submittedAt    DateTime        @default(now()) @map("submitted_at")

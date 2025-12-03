@@ -39,6 +39,11 @@ export interface Machine {
   locationLat?: number;
   locationLng?: number;
   assignedOperatorId?: string;
+  checklistTemplateId?: string;
+  checklistTemplate?: {
+    id: string;
+    name: string;
+  };
 }
 
 // Checklist Types
@@ -89,6 +94,23 @@ export interface ChecklistSubmission {
 export type JobStatus = 'scheduled' | 'in_progress' | 'completed' | 'cancelled' | 'delayed';
 export type JobPriority = 'low' | 'medium' | 'high' | 'urgent';
 
+export interface JobAssignment {
+  id: string;
+  jobId: string;
+  machineId?: string;
+  operatorId?: string;
+  machine?: {
+    id: string;
+    name: string;
+    machineType?: MachineType;
+  };
+  operator?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+  };
+}
+
 export interface Job {
   id: string;
   title: string;
@@ -101,8 +123,9 @@ export interface Job {
   progress: number;
   scheduledStart?: string;
   scheduledEnd?: string;
-  machines: Machine[];
-  operators: User[];
+  machines?: Machine[];
+  operators?: User[];
+  jobAssignments?: JobAssignment[];
 }
 
 // Alert Types

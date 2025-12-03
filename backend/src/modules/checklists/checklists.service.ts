@@ -143,6 +143,8 @@ export class ChecklistsService {
         notes: dto.notes,
         locationLat: dto.locationLat,
         locationLng: dto.locationLng,
+        startHours: dto.startHours,
+        endHours: dto.endHours,
       },
       include: {
         machine: {
