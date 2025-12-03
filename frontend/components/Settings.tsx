@@ -19,6 +19,9 @@ export const Settings: React.FC<SettingsProps> = ({ firmDetails, updateFirmDetai
   const [activeTab, setActiveTab] = useState<TabType>('profile');
   const [isLoading, setIsLoading] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [show2FAModal, setShow2FAModal] = useState(false);
+  const [is2FAEnabled, setIs2FAEnabled] = useState(false);
+  const [verificationCode, setVerificationCode] = useState('');
 
   // Form States
   const [profileData, setProfileData] = useState({
@@ -26,6 +29,14 @@ export const Settings: React.FC<SettingsProps> = ({ firmDetails, updateFirmDetai
     email: 'ahmet@kuzeyinsaat.com.tr',
     title: 'Operasyon Müdürü'
   });
+
+  // Password change state
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  const [passwordError, setPasswordError] = useState('');
 
   // Local state for form editing, initialized with props
   const [companyData, setCompanyData] = useState<FirmDetails>(firmDetails);
@@ -44,16 +55,50 @@ export const Settings: React.FC<SettingsProps> = ({ firmDetails, updateFirmDetai
   });
 
   const handleSave = () => {
+    // Validate password if on security tab
+    if (activeTab === 'security' && passwordData.newPassword) {
+      if (passwordData.newPassword !== passwordData.confirmPassword) {
+        setPasswordError('Şifreler eşleşmiyor');
+        return;
+      }
+      if (passwordData.newPassword.length < 8) {
+        setPasswordError('Şifre en az 8 karakter olmalı');
+        return;
+      }
+      if (!passwordData.currentPassword) {
+        setPasswordError('Mevcut şifrenizi girin');
+        return;
+      }
+    }
+
     setIsLoading(true);
+    setPasswordError('');
+
     // Simulate API Call
     setTimeout(() => {
       if (activeTab === 'company') {
         updateFirmDetails(companyData);
       }
+      // In a real app, profile, notifications and security would call respective APIs
+      // For now we just show success message
+      if (activeTab === 'security' && passwordData.newPassword) {
+        // Clear password fields after successful change
+        setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      }
       setIsLoading(false);
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 3000);
     }, 1000);
+  };
+
+  const handle2FAActivation = () => {
+    if (verificationCode.length === 6) {
+      setIs2FAEnabled(true);
+      setShow2FAModal(false);
+      setVerificationCode('');
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 3000);
+    }
   };
 
   const tabs = [
@@ -78,8 +123,8 @@ export const Settings: React.FC<SettingsProps> = ({ firmDetails, updateFirmDetai
                 </div>
               </div>
               <div>
-                <h3 className="text-lg font-bold text-smart-navy dark:text-white">Profil Fotoğrafı</h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400">PNG, JPG formatında max 2MB.</p>
+                <h3 className="text-lg font-bold text-smart-navy dark:text-white">{t.labels.profilePhoto}</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400">{t.labels.profilePhotoHint}</p>
               </div>
             </div>
 
@@ -117,7 +162,7 @@ export const Settings: React.FC<SettingsProps> = ({ firmDetails, updateFirmDetai
             </div>
 
             <div className="pt-6 border-t border-gray-100 dark:border-slate-700">
-               <h3 className="text-lg font-bold text-smart-navy dark:text-white mb-4">Uygulama Tercihleri</h3>
+               <h3 className="text-lg font-bold text-smart-navy dark:text-white mb-4">{t.labels.appPreferences}</h3>
                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                  <div>
                     <label className="block text-sm font-bold text-smart-navy dark:text-gray-300 mb-2">{t.labels.language}</label>
@@ -143,7 +188,7 @@ export const Settings: React.FC<SettingsProps> = ({ firmDetails, updateFirmDetai
                       >
                         <span className="flex items-center gap-2">
                           {isDarkMode ? <Moon size={18} /> : <Sun size={18} />}
-                          {isDarkMode ? 'Karanlık Mod' : 'Aydınlık Mod'}
+                          {isDarkMode ? t.labels.darkMode : t.labels.lightMode}
                         </span>
                         <div className={`w-10 h-5 rounded-full relative transition-colors ${isDarkMode ? 'bg-smart-yellow' : 'bg-gray-300'}`}>
                             <div className={`absolute top-1 w-3 h-3 rounded-full bg-white transition-all ${isDarkMode ? 'left-6' : 'left-1'}`}></div>
@@ -162,8 +207,8 @@ export const Settings: React.FC<SettingsProps> = ({ firmDetails, updateFirmDetai
             <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-100 dark:border-blue-800 flex items-start gap-3">
               <Building2 className="text-smart-navy dark:text-blue-300 mt-1" />
               <div>
-                <h4 className="font-bold text-smart-navy dark:text-white text-sm">Firma Bilgileri Önemlidir</h4>
-                <p className="text-xs text-gray-600 dark:text-gray-300 mt-1">Bu bilgiler faturalarınızda ve operatörlerinizin ekranında görünecektir.</p>
+                <h4 className="font-bold text-smart-navy dark:text-white text-sm">{t.labels.companyInfoImportant}</h4>
+                <p className="text-xs text-gray-600 dark:text-gray-300 mt-1">{t.labels.companyInfoDesc}</p>
               </div>
             </div>
 
@@ -221,11 +266,11 @@ export const Settings: React.FC<SettingsProps> = ({ firmDetails, updateFirmDetai
         return (
           <div className="space-y-6 animate-fadeIn">
             {[
-              { id: 'emailAlerts', label: 'E-posta Bildirimleri', desc: 'Önemli güncellemeleri e-posta ile al.' },
-              { id: 'pushNotifications', label: 'Anlık Bildirimler (Push)', desc: 'Tarayıcı üzerinden anlık uyarılar.' },
-              { id: 'maintenanceAlert', label: 'Bakım Uyarıları', desc: 'Makine bakım zamanı geldiğinde uyar.', important: true },
-              { id: 'weeklyReport', label: 'Haftalık Rapor', desc: 'Her Pazartesi haftalık özet raporu gönder.' },
-              { id: 'marketing', label: 'Kampanya ve Duyurular', desc: 'Yeni özellikler ve indirimlerden haberdar ol.' },
+              { id: 'emailAlerts', label: t.notifications.emailAlerts, desc: t.notifications.emailAlertsDesc },
+              { id: 'pushNotifications', label: t.notifications.pushNotifications, desc: t.notifications.pushDesc },
+              { id: 'maintenanceAlert', label: t.notifications.maintenanceAlerts, desc: t.notifications.maintenanceDesc, important: true },
+              { id: 'weeklyReport', label: t.notifications.weeklyReport, desc: t.notifications.weeklyReportDesc },
+              { id: 'marketing', label: t.notifications.marketing, desc: t.notifications.marketingDesc },
             ].map((item) => (
               <div key={item.id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-slate-700 rounded-lg border border-gray-100 dark:border-slate-600">
                 <div className="flex items-center gap-3">
@@ -255,23 +300,44 @@ export const Settings: React.FC<SettingsProps> = ({ firmDetails, updateFirmDetai
              <div className="p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800 flex items-start gap-3">
                <Shield className="text-orange-600 dark:text-orange-400 mt-1" />
                <div>
-                  <h4 className="font-bold text-orange-800 dark:text-orange-300">Hesap Güvenliği</h4>
-                  <p className="text-xs text-orange-700 dark:text-orange-400 mt-1">Şifrenizi düzenli olarak değiştirmeniz önerilir.</p>
+                  <h4 className="font-bold text-orange-800 dark:text-orange-300">{t.labels.accountSecurity}</h4>
+                  <p className="text-xs text-orange-700 dark:text-orange-400 mt-1">{t.labels.securityHint}</p>
                </div>
              </div>
 
+             {passwordError && (
+               <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-600 dark:text-red-400 text-sm">
+                 {passwordError}
+               </div>
+             )}
+
              <div className="space-y-4">
                 <div>
-                   <label className="block text-sm font-bold text-smart-navy dark:text-gray-300 mb-2">Mevcut Şifre</label>
-                   <input type="password" className="w-full px-4 py-3 border border-gray-300 dark:border-slate-600 rounded-lg bg-white text-gray-900 dark:bg-slate-700 dark:text-white" />
+                   <label className="block text-sm font-bold text-smart-navy dark:text-gray-300 mb-2">{t.labels.currentPassword}</label>
+                   <input
+                     type="password"
+                     value={passwordData.currentPassword}
+                     onChange={(e) => setPasswordData({...passwordData, currentPassword: e.target.value})}
+                     className="w-full px-4 py-3 border border-gray-300 dark:border-slate-600 rounded-lg bg-white text-gray-900 dark:bg-slate-700 dark:text-white"
+                   />
                 </div>
                 <div>
-                   <label className="block text-sm font-bold text-smart-navy dark:text-gray-300 mb-2">Yeni Şifre</label>
-                   <input type="password" className="w-full px-4 py-3 border border-gray-300 dark:border-slate-600 rounded-lg bg-white text-gray-900 dark:bg-slate-700 dark:text-white" />
+                   <label className="block text-sm font-bold text-smart-navy dark:text-gray-300 mb-2">{t.labels.newPassword}</label>
+                   <input
+                     type="password"
+                     value={passwordData.newPassword}
+                     onChange={(e) => setPasswordData({...passwordData, newPassword: e.target.value})}
+                     className="w-full px-4 py-3 border border-gray-300 dark:border-slate-600 rounded-lg bg-white text-gray-900 dark:bg-slate-700 dark:text-white"
+                   />
                 </div>
                 <div>
-                   <label className="block text-sm font-bold text-smart-navy dark:text-gray-300 mb-2">Yeni Şifre (Tekrar)</label>
-                   <input type="password" className="w-full px-4 py-3 border border-gray-300 dark:border-slate-600 rounded-lg bg-white text-gray-900 dark:bg-slate-700 dark:text-white" />
+                   <label className="block text-sm font-bold text-smart-navy dark:text-gray-300 mb-2">{t.labels.confirmPassword}</label>
+                   <input
+                     type="password"
+                     value={passwordData.confirmPassword}
+                     onChange={(e) => setPasswordData({...passwordData, confirmPassword: e.target.value})}
+                     className="w-full px-4 py-3 border border-gray-300 dark:border-slate-600 rounded-lg bg-white text-gray-900 dark:bg-slate-700 dark:text-white"
+                   />
                 </div>
              </div>
 
@@ -279,12 +345,24 @@ export const Settings: React.FC<SettingsProps> = ({ firmDetails, updateFirmDetai
                 <div className="flex items-center justify-between">
                    <div>
                       <h4 className="font-bold text-smart-navy dark:text-white flex items-center gap-2">
-                        <Smartphone size={18} /> İki Faktörlü Doğrulama (2FA)
+                        <Smartphone size={18} /> {t.labels.twoFactor}
+                        {is2FAEnabled && (
+                          <span className="ml-2 px-2 py-0.5 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 text-xs rounded-full">
+                            Aktif
+                          </span>
+                        )}
                       </h4>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Giriş yaparken telefonunuza kod gönderilir.</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{t.labels.twoFactorDesc}</p>
                    </div>
-                   <button className="px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg text-sm font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700 bg-white dark:bg-slate-700">
-                      Aktifleştir
+                   <button
+                     onClick={() => !is2FAEnabled && setShow2FAModal(true)}
+                     className={`px-4 py-2 border rounded-lg text-sm font-bold transition-colors ${
+                       is2FAEnabled
+                         ? 'border-green-300 dark:border-green-700 text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 cursor-default'
+                         : 'border-gray-300 dark:border-slate-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700 bg-white dark:bg-slate-700'
+                     }`}
+                   >
+                      {is2FAEnabled ? 'Etkin' : t.labels.activate}
                    </button>
                 </div>
              </div>
@@ -348,6 +426,78 @@ export const Settings: React.FC<SettingsProps> = ({ firmDetails, updateFirmDetai
           </div>
         </div>
       </div>
+
+      {/* 2FA Modal */}
+      {show2FAModal && (
+        <div className="fixed inset-0 bg-smart-navy/80 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-md shadow-2xl">
+            <div className="bg-smart-navy dark:bg-black p-6 rounded-t-2xl">
+              <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                <Shield />
+                İki Faktörlü Doğrulama
+              </h3>
+            </div>
+
+            <div className="p-6 space-y-6">
+              <div className="text-center">
+                <div className="w-40 h-40 bg-white border-2 border-gray-200 rounded-xl mx-auto mb-4 flex items-center justify-center">
+                  <div className="text-4xl font-mono">QR</div>
+                </div>
+                <p className="text-sm text-gray-600 dark:text-gray-300">
+                  Google Authenticator veya benzeri bir uygulama ile QR kodu tarayın
+                </p>
+              </div>
+
+              <div className="bg-gray-50 dark:bg-slate-700 p-4 rounded-lg">
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Manuel giriş kodu:</p>
+                <p className="font-mono text-sm text-smart-navy dark:text-white tracking-wider">
+                  ABCD EFGH IJKL MNOP
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-smart-navy dark:text-white mb-2">
+                  Doğrulama Kodu
+                </label>
+                <input
+                  type="text"
+                  value={verificationCode}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/\D/g, '').substring(0, 6);
+                    setVerificationCode(value);
+                  }}
+                  placeholder="123456"
+                  maxLength={6}
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-smart-navy/20 outline-none bg-white text-gray-900 dark:bg-slate-700 dark:text-white text-center text-2xl tracking-widest font-mono"
+                />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 text-center">
+                  Uygulamadaki 6 haneli kodu girin
+                </p>
+              </div>
+            </div>
+
+            <div className="p-6 border-t border-gray-100 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 rounded-b-2xl flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setShow2FAModal(false);
+                  setVerificationCode('');
+                }}
+                className="px-6 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-slate-700 rounded-lg font-medium transition-colors"
+              >
+                İptal
+              </button>
+              <button
+                onClick={handle2FAActivation}
+                disabled={verificationCode.length !== 6}
+                className="px-6 py-2 bg-smart-navy dark:bg-black text-white rounded-lg font-bold hover:bg-blue-900 dark:hover:bg-gray-700 flex items-center gap-2 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              >
+                <CheckCircle size={18} />
+                Aktifleştir
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

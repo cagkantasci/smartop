@@ -9,17 +9,19 @@ import {
   MachineListScreen,
   MachineDetailScreen,
   ChecklistScreen,
+  ChecklistTemplatesScreen,
   ProfileScreen,
   JobsScreen,
   ApprovalsScreen,
 } from '../screens';
-import { MainTabParamList, MachinesStackParamList } from './types';
+import { MainTabParamList, MachinesStackParamList, ChecklistStackParamList } from './types';
 import { useNotifications } from '../context/NotificationContext';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 const MachinesStack = createNativeStackNavigator<MachinesStackParamList>();
+const ChecklistStack = createNativeStackNavigator<ChecklistStackParamList>();
 
 // Machines Stack Navigator
 function MachinesNavigator() {
@@ -28,6 +30,16 @@ function MachinesNavigator() {
       <MachinesStack.Screen name="MachineList" component={MachineListScreen} />
       <MachinesStack.Screen name="MachineDetail" component={MachineDetailScreen} />
     </MachinesStack.Navigator>
+  );
+}
+
+// Checklist Stack Navigator
+function ChecklistNavigator() {
+  return (
+    <ChecklistStack.Navigator screenOptions={{ headerShown: false }}>
+      <ChecklistStack.Screen name="ChecklistMain" component={ChecklistScreen} />
+      <ChecklistStack.Screen name="ChecklistTemplates" component={ChecklistTemplatesScreen} />
+    </ChecklistStack.Navigator>
   );
 }
 
@@ -126,7 +138,7 @@ export function MainNavigator() {
       />
       <Tab.Screen
         name="Checklist"
-        component={ChecklistScreen}
+        component={ChecklistNavigator}
         options={{ tabBarLabel: t.tabs.checklist }}
       />
       <Tab.Screen

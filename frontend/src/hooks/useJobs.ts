@@ -3,10 +3,11 @@ import { jobService, Job, CreateJobDto, UpdateJobDto, AssignJobDto, JobListParam
 
 export const JOBS_QUERY_KEY = 'jobs';
 
-export const useJobs = (params?: JobListParams) => {
+export const useJobs = (params?: JobListParams, options?: { enabled?: boolean }) => {
   return useQuery({
     queryKey: [JOBS_QUERY_KEY, params],
     queryFn: () => jobService.getAll(params),
+    enabled: options?.enabled !== false,
   });
 };
 
@@ -97,7 +98,8 @@ export const useAssignJob = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ jobId, data }: { jobId: string; data: AssignJobDto }) => jobService.assign(jobId, data),
+    mutationFn: ({ jobId, machineIds, operatorIds = [] }: { jobId: string; machineIds: string[]; operatorIds?: string[] }) =>
+      jobService.assign(jobId, machineIds, operatorIds),
     onSuccess: (_, { jobId }) => {
       queryClient.invalidateQueries({ queryKey: [JOBS_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: [JOBS_QUERY_KEY, jobId] });

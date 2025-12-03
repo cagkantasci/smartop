@@ -3,10 +3,11 @@ import { machineService, Machine, CreateMachineDto, UpdateMachineDto, MachineLis
 
 export const MACHINES_QUERY_KEY = 'machines';
 
-export const useMachines = (params?: MachineListParams) => {
+export const useMachines = (params?: MachineListParams, options?: { enabled?: boolean }) => {
   return useQuery({
     queryKey: [MACHINES_QUERY_KEY, params],
     queryFn: () => machineService.getAll(params),
+    enabled: options?.enabled !== false,
   });
 };
 

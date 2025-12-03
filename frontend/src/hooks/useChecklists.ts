@@ -14,10 +14,11 @@ export const TEMPLATES_QUERY_KEY = 'checklist-templates';
 export const SUBMISSIONS_QUERY_KEY = 'checklist-submissions';
 
 // Template hooks
-export const useChecklistTemplates = () => {
+export const useChecklistTemplates = (options?: { enabled?: boolean }) => {
   return useQuery({
     queryKey: [TEMPLATES_QUERY_KEY],
     queryFn: () => checklistService.getTemplates(),
+    enabled: options?.enabled !== false,
   });
 };
 
@@ -80,10 +81,11 @@ export const useChecklistSubmission = (id: string) => {
   });
 };
 
-export const usePendingSubmissions = () => {
+export const usePendingSubmissions = (options?: { enabled?: boolean }) => {
   return useQuery({
     queryKey: [SUBMISSIONS_QUERY_KEY, 'pending'],
     queryFn: () => checklistService.getPendingSubmissions(),
+    enabled: options?.enabled !== false,
   });
 };
 

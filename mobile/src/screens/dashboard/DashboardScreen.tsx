@@ -259,8 +259,8 @@ export function DashboardScreen() {
                     <Marker
                       key={`machine-${machine.id}`}
                       coordinate={{
-                        latitude: machine.locationLat!,
-                        longitude: machine.locationLng!,
+                        latitude: Number(machine.locationLat),
+                        longitude: Number(machine.locationLng),
                       }}
                       pinColor={getStatusColor(machine.status)}
                     >
@@ -272,9 +272,9 @@ export function DashboardScreen() {
                           </Text>
                           <View style={[styles.calloutStatus, { backgroundColor: `${getStatusColor(machine.status)}20` }]}>
                             <Text style={[styles.calloutStatusText, { color: getStatusColor(machine.status) }]}>
-                              {machine.status === 'active' ? 'Aktif' :
-                               machine.status === 'idle' ? 'Boşta' :
-                               machine.status === 'maintenance' ? 'Bakımda' : 'Devre Dışı'}
+                              {machine.status === 'active' ? t.dashboard.map.active :
+                               machine.status === 'idle' ? t.dashboard.map.idle :
+                               machine.status === 'maintenance' ? t.dashboard.map.maintenance : t.dashboard.map.outOfService}
                             </Text>
                           </View>
                         </View>
@@ -287,8 +287,8 @@ export function DashboardScreen() {
                     <Marker
                       key={`job-${job.id}`}
                       coordinate={{
-                        latitude: job.locationLat!,
-                        longitude: job.locationLng!,
+                        latitude: Number(job.locationLat),
+                        longitude: Number(job.locationLng),
                       }}
                       pinColor="#F59E0B"
                     >
@@ -299,7 +299,7 @@ export function DashboardScreen() {
                             <Text style={styles.calloutSubtitle}>{job.locationName}</Text>
                           )}
                           <Text style={styles.calloutProgress}>
-                            İlerleme: {job.progress || 0}%
+                            {t.dashboard.map.progress}: {job.progress || 0}%
                           </Text>
                         </View>
                       </Callout>
@@ -311,15 +311,15 @@ export function DashboardScreen() {
                 <View style={[styles.mapLegend, { backgroundColor: colors.card }]}>
                   <View style={styles.legendItem}>
                     <View style={[styles.legendDot, { backgroundColor: '#22C55E' }]} />
-                    <Text style={[styles.legendText, { color: colors.textSecondary }]}>Aktif</Text>
+                    <Text style={[styles.legendText, { color: colors.textSecondary }]}>{t.dashboard.map.active}</Text>
                   </View>
                   <View style={styles.legendItem}>
                     <View style={[styles.legendDot, { backgroundColor: '#F59E0B' }]} />
-                    <Text style={[styles.legendText, { color: colors.textSecondary }]}>İş</Text>
+                    <Text style={[styles.legendText, { color: colors.textSecondary }]}>{t.dashboard.map.job}</Text>
                   </View>
                   <View style={styles.legendItem}>
                     <View style={[styles.legendDot, { backgroundColor: '#EF4444' }]} />
-                    <Text style={[styles.legendText, { color: colors.textSecondary }]}>Bakım</Text>
+                    <Text style={[styles.legendText, { color: colors.textSecondary }]}>{t.dashboard.map.maintenance}</Text>
                   </View>
                 </View>
 
@@ -328,7 +328,7 @@ export function DashboardScreen() {
                   <View style={[styles.mapEmptyOverlay, { backgroundColor: `${colors.card}CC` }]}>
                     <Ionicons name="location-outline" size={32} color={colors.textSecondary} />
                     <Text style={[styles.mapEmptyText, { color: colors.textSecondary }]}>
-                      Henüz konum verisi yok
+                      {t.dashboard.map.noLocation}
                     </Text>
                   </View>
                 )}

@@ -11,6 +11,11 @@ export interface User {
   phone?: string;
   avatarUrl?: string;
   jobTitle?: string;
+  licenses?: string[];
+  specialties?: string[];
+  isActive: boolean;
+  lastLoginAt?: string;
+  createdAt?: string;
 }
 
 // Machine Types
@@ -137,4 +142,36 @@ export interface AuthTokens {
 export interface LoginCredentials {
   email: string;
   password: string;
+}
+
+// Notification Types
+export type NotificationType =
+  | 'checklist_submitted'
+  | 'checklist_approved'
+  | 'checklist_rejected'
+  | 'job_assigned'
+  | 'job_started'
+  | 'job_completed'
+  | 'maintenance_due'
+  | 'machine_issue'
+  | 'system';
+
+export interface Notification {
+  id: string;
+  type: NotificationType;
+  title: string;
+  body?: string;
+  data?: Record<string, any>;
+  isRead: boolean;
+  readAt?: string;
+  createdAt: string;
+}
+
+// Offline Queue Types
+export interface OfflineAction {
+  id: string;
+  type: 'checklist_submit' | 'location_update' | 'job_update';
+  payload: Record<string, any>;
+  timestamp: number;
+  retryCount: number;
 }

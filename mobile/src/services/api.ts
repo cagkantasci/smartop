@@ -1,7 +1,7 @@
 import axios, { AxiosInstance, InternalAxiosRequestConfig } from 'axios';
 import * as SecureStore from 'expo-secure-store';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.0.23:3000/api/v1';
+const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.0.19:3000/api/v1';
 
 // Create axios instance
 const api: AxiosInstance = axios.create({
@@ -122,8 +122,28 @@ export const machinesApi = {
     return response.data;
   },
 
+  update: async (id: string, data: {
+    name?: string;
+    status?: string;
+    assignedOperatorId?: string | null;
+    checklistTemplateId?: string | null;
+  }) => {
+    const response = await api.patch(`/machines/${id}`, data);
+    return response.data;
+  },
+
+  assignOperator: async (id: string, operatorId: string | null) => {
+    const response = await api.post(`/machines/${id}/assign`, { operatorId });
+    return response.data;
+  },
+
   updateLocation: async (id: string, lat: number, lng: number) => {
     const response = await api.patch(`/machines/${id}/location`, { lat, lng });
+    return response.data;
+  },
+
+  getChecklists: async (id: string) => {
+    const response = await api.get(`/machines/${id}/checklists`);
     return response.data;
   },
 };
@@ -132,6 +152,31 @@ export const machinesApi = {
 export const checklistsApi = {
   getTemplates: async () => {
     const response = await api.get('/checklists/templates');
+    return response.data;
+  },
+
+  createTemplate: async (data: {
+    name: string;
+    description?: string;
+    machineTypes?: string[];
+    items: Array<{ id: string; label: string; type: 'boolean' | 'text' | 'number' | 'photo'; required: boolean }>;
+  }) => {
+    const response = await api.post('/checklists/templates', data);
+    return response.data;
+  },
+
+  updateTemplate: async (id: string, data: {
+    name?: string;
+    description?: string;
+    machineTypes?: string[];
+    items?: Array<{ id: string; label: string; type: 'boolean' | 'text' | 'number' | 'photo'; required: boolean }>;
+  }) => {
+    const response = await api.patch(`/checklists/templates/${id}`, data);
+    return response.data;
+  },
+
+  deleteTemplate: async (id: string) => {
+    const response = await api.delete(`/checklists/templates/${id}`);
     return response.data;
   },
 
@@ -169,15 +214,6 @@ export const checklistsApi = {
     });
     return response.data;
   },
-
-  submit: async (data: {
-    machineId: string;
-    templateId: string;
-    items: Array<{ itemId: string; checked: boolean; notes?: string; hasIssue?: boolean }>;
-  }) => {
-    const response = await api.post('/checklists/submissions', data);
-    return response.data;
-  },
 };
 
 // Jobs API
@@ -189,6 +225,19 @@ export const jobsApi = {
 
   getById: async (id: string) => {
     const response = await api.get(`/jobs/${id}`);
+    return response.data;
+  },
+
+  create: async (data: {
+    title: string;
+    description?: string;
+    locationName?: string;
+    locationLat?: number | null;
+    locationLng?: number | null;
+    priority: string;
+    status?: string;
+  }) => {
+    const response = await api.post('/jobs', data);
     return response.data;
   },
 
@@ -215,6 +264,34 @@ export const usersApi = {
     return response.data;
   },
 
+  create: async (data: {
+    email: string;
+    password: string;
+    firstName: string;
+    lastName: string;
+    role: string;
+    phone?: string;
+    jobTitle?: string;
+    licenses?: string[];
+    specialties?: string[];
+  }) => {
+    const response = await api.post('/users', data);
+    return response.data;
+  },
+
+  update: async (id: string, data: {
+    firstName?: string;
+    lastName?: string;
+    phone?: string;
+    jobTitle?: string;
+    licenses?: string[];
+    specialties?: string[];
+    isActive?: boolean;
+  }) => {
+    const response = await api.patch(`/users/${id}`, data);
+    return response.data;
+  },
+
   updateProfile: async (data: { firstName?: string; lastName?: string; phone?: string }) => {
     const response = await api.patch('/users/profile', data);
     return response.data;
@@ -237,6 +314,42 @@ export const usersApi = {
     maintenanceAlerts?: boolean;
   }) => {
     const response = await api.patch('/users/notification-settings', settings);
+    return response.data;
+  },
+};
+
+// Notifications API
+export const notificationsApi = {
+  getAll: async (params?: { limit?: number; offset?: number }) => {
+    const response = await api.get('/notifications', { params });
+    return response.data;
+  },
+
+  markAsRead: async (id: string) => {
+    const response = await api.patch(`/notifications/${id}/read`);
+    return response.data;
+  },
+
+  markAllAsRead: async () => {
+    const response = await api.post('/notifications/read-all');
+    return response.data;
+  },
+
+  registerDevice: async (token: string, platform: 'ios' | 'android' | 'web') => {
+    const response = await api.post('/notifications/device', { token, platform });
+    return response.data;
+  },
+};
+
+// Uploads API
+export const uploadsApi = {
+  uploadBase64: async (folder: string, base64: string, mimeType: string) => {
+    const response = await api.post('/uploads/base64', { folder, base64, mimeType });
+    return response.data;
+  },
+
+  getPresignedUrl: async (folder: string, filename: string, mimeType: string) => {
+    const response = await api.post('/uploads/presigned-url', { folder, filename, mimeType });
     return response.data;
   },
 };

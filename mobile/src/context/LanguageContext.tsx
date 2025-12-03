@@ -8,6 +8,7 @@ const tr = {
   // Common
   common: {
     save: 'Kaydet',
+    saving: 'Kaydediliyor...',
     cancel: 'İptal',
     delete: 'Sil',
     edit: 'Düzenle',
@@ -60,6 +61,15 @@ const tr = {
       activeJobs: 'Aktif İşler',
       seeAll: 'Tümünü Gör',
       map: 'Canlı Harita',
+    },
+    map: {
+      active: 'Aktif',
+      idle: 'Boşta',
+      maintenance: 'Bakımda',
+      outOfService: 'Devre Dışı',
+      job: 'İş',
+      progress: 'İlerleme',
+      noLocation: 'Henüz konum verisi yok',
     },
     empty: {
       machines: 'Henüz makine yok',
@@ -362,6 +372,84 @@ const tr = {
       loginError: 'Giriş başarısız. E-posta ve şifrenizi kontrol edin.',
     },
   },
+
+  // Operators
+  operators: {
+    title: 'Ekip Yönetimi',
+    subtitle: '{count} kişi listeleniyor',
+    search: 'İsim veya email ile ara...',
+    addNew: 'Yeni Personel Ekle',
+    filter: {
+      all: 'Tümü',
+      operators: 'Operatörler',
+      managers: 'Yöneticiler',
+    },
+    role: {
+      admin: 'Admin',
+      manager: 'Yönetici',
+      operator: 'Operatör',
+    },
+    status: {
+      active: 'Aktif',
+      inactive: 'Pasif',
+      total: 'Toplam',
+    },
+    detail: {
+      info: 'Bilgiler',
+      contact: 'İletişim',
+      licenses: 'Sertifikalar',
+      specialties: 'Uzmanlık Alanları',
+      assignedMachines: 'Atanan Makineler',
+      performance: 'Performans',
+      noAssignedMachines: 'Atanmış makine yok',
+    },
+    empty: {
+      title: 'Personel Bulunamadı',
+      filtered: 'Arama kriterlerine uygun kullanıcı bulunamadı',
+      noOperators: 'Henüz ekip üyesi yok',
+    },
+    messages: {
+      loadError: 'Kullanıcılar yüklenirken bir hata oluştu',
+      addSuccess: 'Personel eklendi',
+      updateSuccess: 'Personel güncellendi',
+      deleteSuccess: 'Personel silindi',
+    },
+  },
+
+  // Checklist Templates
+  checklistTemplates: {
+    title: 'Kontrol Şablonları',
+    addTemplate: 'Yeni Şablon',
+    editTemplate: 'Şablonu Düzenle',
+    items: 'madde',
+    form: {
+      name: 'Şablon Adı',
+      namePlaceholder: 'Örn: Günlük Kontrol Listesi',
+      description: 'Açıklama',
+      descriptionPlaceholder: 'Şablon açıklaması (opsiyonel)',
+      items: 'Kontrol Maddeleri',
+      itemPlaceholder: 'Yeni madde ekle...',
+      noItems: 'Henüz kontrol maddesi eklenmedi',
+    },
+    confirmDelete: {
+      title: 'Şablonu Sil',
+      message: 'Bu şablonu silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.',
+    },
+    empty: {
+      title: 'Şablon Bulunamadı',
+      subtitle: 'Henüz kontrol şablonu oluşturulmamış',
+    },
+    messages: {
+      loadError: 'Şablonlar yüklenemedi',
+      createSuccess: 'Şablon oluşturuldu',
+      updateSuccess: 'Şablon güncellendi',
+      deleteSuccess: 'Şablon silindi',
+      saveError: 'Şablon kaydedilemedi',
+      deleteError: 'Şablon silinemedi',
+      nameRequired: 'Şablon adı zorunludur',
+      itemsRequired: 'En az bir kontrol maddesi ekleyin',
+    },
+  },
 };
 
 // English translations
@@ -369,6 +457,7 @@ const en = {
   // Common
   common: {
     save: 'Save',
+    saving: 'Saving...',
     cancel: 'Cancel',
     delete: 'Delete',
     edit: 'Edit',
@@ -421,6 +510,15 @@ const en = {
       activeJobs: 'Active Jobs',
       seeAll: 'See All',
       map: 'Live Map',
+    },
+    map: {
+      active: 'Active',
+      idle: 'Idle',
+      maintenance: 'Maintenance',
+      outOfService: 'Out of Service',
+      job: 'Job',
+      progress: 'Progress',
+      noLocation: 'No location data yet',
     },
     empty: {
       machines: 'No machines yet',
@@ -721,6 +819,84 @@ const en = {
     },
     messages: {
       loginError: 'Login failed. Please check your email and password.',
+    },
+  },
+
+  // Operators
+  operators: {
+    title: 'Team Management',
+    subtitle: '{count} people listed',
+    search: 'Search by name or email...',
+    addNew: 'Add New Member',
+    filter: {
+      all: 'All',
+      operators: 'Operators',
+      managers: 'Managers',
+    },
+    role: {
+      admin: 'Admin',
+      manager: 'Manager',
+      operator: 'Operator',
+    },
+    status: {
+      active: 'Active',
+      inactive: 'Inactive',
+      total: 'Total',
+    },
+    detail: {
+      info: 'Information',
+      contact: 'Contact',
+      licenses: 'Certifications',
+      specialties: 'Specialties',
+      assignedMachines: 'Assigned Machines',
+      performance: 'Performance',
+      noAssignedMachines: 'No assigned machines',
+    },
+    empty: {
+      title: 'No Personnel Found',
+      filtered: 'No users match search criteria',
+      noOperators: 'No team members yet',
+    },
+    messages: {
+      loadError: 'An error occurred while loading users',
+      addSuccess: 'Personnel added',
+      updateSuccess: 'Personnel updated',
+      deleteSuccess: 'Personnel deleted',
+    },
+  },
+
+  // Checklist Templates
+  checklistTemplates: {
+    title: 'Checklist Templates',
+    addTemplate: 'New Template',
+    editTemplate: 'Edit Template',
+    items: 'items',
+    form: {
+      name: 'Template Name',
+      namePlaceholder: 'E.g., Daily Inspection Checklist',
+      description: 'Description',
+      descriptionPlaceholder: 'Template description (optional)',
+      items: 'Checklist Items',
+      itemPlaceholder: 'Add new item...',
+      noItems: 'No checklist items added yet',
+    },
+    confirmDelete: {
+      title: 'Delete Template',
+      message: 'Are you sure you want to delete this template? This action cannot be undone.',
+    },
+    empty: {
+      title: 'No Templates Found',
+      subtitle: 'No checklist templates created yet',
+    },
+    messages: {
+      loadError: 'Failed to load templates',
+      createSuccess: 'Template created',
+      updateSuccess: 'Template updated',
+      deleteSuccess: 'Template deleted',
+      saveError: 'Failed to save template',
+      deleteError: 'Failed to delete template',
+      nameRequired: 'Template name is required',
+      itemsRequired: 'Add at least one checklist item',
     },
   },
 };

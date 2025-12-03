@@ -642,31 +642,15 @@ export function JobsScreen() {
                 </Card>
               )}
 
-              {/* Map View */}
+              {/* Location Coordinates */}
               {selectedJob.locationLat && selectedJob.locationLng && (
                 <Card style={styles.detailCard}>
-                  <Text style={styles.detailCardTitle}>Harita</Text>
-                  <View style={styles.detailMapContainer}>
-                    <MapView
-                      style={styles.detailMap}
-                      provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
-                      initialRegion={{
-                        latitude: selectedJob.locationLat,
-                        longitude: selectedJob.locationLng,
-                        latitudeDelta: 0.01,
-                        longitudeDelta: 0.01,
-                      }}
-                      scrollEnabled={false}
-                      zoomEnabled={false}
-                    >
-                      <Marker
-                        coordinate={{
-                          latitude: selectedJob.locationLat,
-                          longitude: selectedJob.locationLng,
-                        }}
-                        pinColor="#F59E0B"
-                      />
-                    </MapView>
+                  <Text style={styles.detailCardTitle}>Konum Koordinatları</Text>
+                  <View style={styles.detailLocationRow}>
+                    <Ionicons name="navigate" size={20} color="#F59E0B" />
+                    <Text style={styles.detailLocationText}>
+                      {selectedJob.locationLat.toFixed(6)}, {selectedJob.locationLng.toFixed(6)}
+                    </Text>
                   </View>
                 </Card>
               )}

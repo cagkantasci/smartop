@@ -60,8 +60,8 @@ export interface UpdateJobDto extends Partial<CreateJobDto> {
 }
 
 export interface AssignJobDto {
-  machineId: string;
-  operatorId: string;
+  machineIds: string[];
+  operatorIds: string[];
 }
 
 export interface JobListParams {
@@ -109,8 +109,8 @@ export const jobService = {
     return response.data;
   },
 
-  async assign(id: string, data: AssignJobDto): Promise<Job> {
-    const response = await api.post<Job>(`/jobs/${id}/assign`, data);
+  async assign(id: string, machineIds: string[], operatorIds: string[] = []): Promise<Job> {
+    const response = await api.post<Job>(`/jobs/${id}/assign`, { machineIds, operatorIds });
     return response.data;
   },
 

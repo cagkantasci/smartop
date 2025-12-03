@@ -1,7 +1,9 @@
 
-import React from 'react';
-import { Wallet, CreditCard, Download, TrendingUp, Calendar, AlertCircle, CheckCircle, Percent, FileText } from 'lucide-react';
+import React, { useState } from 'react';
+import { Wallet, CreditCard, Download, TrendingUp, Calendar, AlertCircle, CheckCircle, Percent, FileText, Store, Check, Building2 } from 'lucide-react';
 import { Invoice, Machine, FirmDetails, TranslationDictionary } from '../types';
+
+type PaymentMethodType = 'credit_card' | 'marketplace' | 'bank_transfer';
 
 interface FinanceModuleProps {
   invoices: Invoice[];
@@ -11,6 +13,15 @@ interface FinanceModuleProps {
 }
 
 export const FinanceModule: React.FC<FinanceModuleProps> = ({ invoices, machines, firmDetails, t }) => {
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethodType>('credit_card');
+  const [showCardUpdateModal, setShowCardUpdateModal] = useState(false);
+  const [cardDetails, setCardDetails] = useState({
+    number: '',
+    expiry: '',
+    cvv: '',
+    name: ''
+  });
+
   // Financial Calculations
   const machineCount = machines.length;
   const basePrice = 500; // TL
@@ -41,12 +52,203 @@ export const FinanceModule: React.FC<FinanceModuleProps> = ({ invoices, machines
       }
   };
 
-  const handleDownloadInvoice = (invoice: Invoice) => {
-    // ... (Invoice download logic remains same) ...
+  const handleDownloadStatement = () => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
-    // ... (HTML Generation) ...
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Hesap Ekstresi - ${firmDetails.name}</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 40px; max-width: 800px; margin: 0 auto; }
+          .header { text-align: center; border-bottom: 2px solid #1e3a5f; padding-bottom: 20px; margin-bottom: 30px; }
+          .header h1 { color: #1e3a5f; margin: 0; }
+          .info-section { display: flex; justify-content: space-between; margin-bottom: 30px; }
+          .info-box { background: #f8f9fa; padding: 15px; border-radius: 8px; }
+          table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+          th { background: #1e3a5f; color: white; padding: 12px; text-align: left; }
+          td { padding: 12px; border-bottom: 1px solid #ddd; }
+          .status-paid { color: #10b981; font-weight: bold; }
+          .status-pending { color: #f59e0b; font-weight: bold; }
+          .status-overdue { color: #ef4444; font-weight: bold; }
+          .total-row { background: #f0f9ff; font-weight: bold; }
+          .footer { margin-top: 40px; text-align: center; color: #666; font-size: 12px; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>SMARTOP</h1>
+          <p>Hesap Ekstresi</p>
+        </div>
+        <div class="info-section">
+          <div class="info-box">
+            <strong>Firma:</strong> ${firmDetails.name}<br/>
+            <strong>Adres:</strong> ${firmDetails.address || 'Belirtilmemiş'}<br/>
+            <strong>Tel:</strong> ${firmDetails.phone || 'Belirtilmemiş'}
+          </div>
+          <div class="info-box">
+            <strong>Tarih:</strong> ${new Date().toLocaleDateString('tr-TR')}<br/>
+            <strong>Aktif Makine:</strong> ${machineCount}<br/>
+            <strong>Aylık Tutar:</strong> ₺${monthlyTotal.toLocaleString()}
+          </div>
+        </div>
+        <h3>Fatura Geçmişi</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Fatura No</th>
+              <th>Tarih</th>
+              <th>Açıklama</th>
+              <th>Tutar</th>
+              <th>Durum</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${invoices.map(inv => `
+              <tr>
+                <td>#${inv.id}</td>
+                <td>${inv.date}</td>
+                <td>${inv.description}</td>
+                <td>₺${inv.amount.toLocaleString()}</td>
+                <td class="status-${inv.status.toLowerCase()}">${getStatusLabel(inv.status)}</td>
+              </tr>
+            `).join('')}
+            <tr class="total-row">
+              <td colspan="3">Toplam</td>
+              <td>₺${invoices.reduce((sum, inv) => sum + inv.amount, 0).toLocaleString()}</td>
+              <td></td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="footer">
+          <p>Bu belge ${new Date().toLocaleString('tr-TR')} tarihinde oluşturulmuştur.</p>
+          <p>Smartop Fleet Management System</p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+    printWindow.print();
   };
+
+  const handleDownloadInvoice = (invoice: Invoice) => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Fatura #${invoice.id}</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 40px; max-width: 800px; margin: 0 auto; }
+          .header { display: flex; justify-content: space-between; align-items: start; border-bottom: 2px solid #1e3a5f; padding-bottom: 20px; margin-bottom: 30px; }
+          .logo { font-size: 24px; font-weight: bold; color: #1e3a5f; }
+          .invoice-info { text-align: right; }
+          .invoice-info h2 { margin: 0; color: #1e3a5f; }
+          .parties { display: flex; justify-content: space-between; margin-bottom: 40px; }
+          .party { width: 45%; }
+          .party h4 { color: #666; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+          .details { background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 30px; }
+          .details-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; }
+          .details-row:last-child { border-bottom: none; }
+          .total { font-size: 24px; font-weight: bold; color: #1e3a5f; text-align: right; margin-top: 20px; }
+          .status { display: inline-block; padding: 8px 16px; border-radius: 20px; font-weight: bold; }
+          .status-paid { background: #d1fae5; color: #059669; }
+          .status-pending { background: #fef3c7; color: #d97706; }
+          .status-overdue { background: #fee2e2; color: #dc2626; }
+          .footer { margin-top: 50px; text-align: center; color: #999; font-size: 11px; border-top: 1px solid #eee; padding-top: 20px; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div class="logo">SMARTOP</div>
+          <div class="invoice-info">
+            <h2>FATURA</h2>
+            <p>#${invoice.id}</p>
+            <p>${invoice.date}</p>
+          </div>
+        </div>
+        <div class="parties">
+          <div class="party">
+            <h4>Gönderen</h4>
+            <strong>Smartop Teknoloji A.Ş.</strong><br/>
+            İstanbul, Türkiye<br/>
+            info@smartop.com.tr
+          </div>
+          <div class="party">
+            <h4>Alıcı</h4>
+            <strong>${firmDetails.name}</strong><br/>
+            ${firmDetails.address || ''}<br/>
+            ${firmDetails.email || ''}
+          </div>
+        </div>
+        <div class="details">
+          <div class="details-row">
+            <span>Açıklama</span>
+            <span>${invoice.description}</span>
+          </div>
+          <div class="details-row">
+            <span>Dönem</span>
+            <span>${invoice.date}</span>
+          </div>
+          <div class="details-row">
+            <span>Durum</span>
+            <span class="status status-${invoice.status.toLowerCase()}">${getStatusLabel(invoice.status)}</span>
+          </div>
+        </div>
+        <div class="total">
+          Toplam: ₺${invoice.amount.toLocaleString()}
+        </div>
+        <div class="footer">
+          <p>Bu fatura elektronik olarak oluşturulmuştur.</p>
+          <p>Smartop Fleet Management System | ${new Date().toLocaleString('tr-TR')}</p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+    printWindow.print();
+  };
+
+  const handleUpdateCard = () => {
+    // In a real app, this would call an API to update payment info
+    if (cardDetails.number && cardDetails.expiry && cardDetails.cvv && cardDetails.name) {
+      alert('Kart bilgileri başarıyla güncellendi!');
+      setShowCardUpdateModal(false);
+      setCardDetails({ number: '', expiry: '', cvv: '', name: '' });
+    }
+  };
+
+  const paymentMethods = [
+    {
+      id: 'credit_card' as PaymentMethodType,
+      name: 'Kredi Kartı',
+      icon: CreditCard,
+      description: 'Otomatik aylık çekim',
+      details: '**** **** **** 4242'
+    },
+    {
+      id: 'marketplace' as PaymentMethodType,
+      name: 'Hepsiburada / Trendyol',
+      icon: Store,
+      description: 'Market üzerinden ödeme',
+      details: 'Hesabınıza bağlı'
+    },
+    {
+      id: 'bank_transfer' as PaymentMethodType,
+      name: 'Havale/EFT',
+      icon: Building2,
+      description: 'Manuel banka transferi',
+      details: 'TR12 3456 7890 1234 5678 90'
+    }
+  ];
 
   return (
     <div className="p-8 space-y-8 animate-fadeIn">
@@ -58,7 +260,10 @@ export const FinanceModule: React.FC<FinanceModuleProps> = ({ invoices, machines
           </h2>
           <p className="text-gray-500 dark:text-gray-400 mt-1">{t.subtitle}</p>
         </div>
-        <button className="bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 text-smart-navy dark:text-white px-4 py-2 rounded-lg font-bold hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors flex items-center gap-2">
+        <button
+          onClick={handleDownloadStatement}
+          className="bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 text-smart-navy dark:text-white px-4 py-2 rounded-lg font-bold hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors flex items-center gap-2"
+        >
             <Download size={18} />
             {t.downloadStatement}
         </button>
@@ -114,30 +319,133 @@ export const FinanceModule: React.FC<FinanceModuleProps> = ({ invoices, machines
           {/* Payment Methods */}
           <div className="lg:col-span-1 space-y-6">
               <h3 className="text-lg font-bold text-smart-navy dark:text-white">{t.paymentMethod}</h3>
-              
-              {/* Card Visual */}
-              <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-xl p-6 text-white shadow-xl relative overflow-hidden h-52 flex flex-col justify-between border border-gray-700">
-                   <div className="absolute top-0 right-0 p-32 bg-white/5 rounded-full blur-3xl -mr-10 -mt-10"></div>
-                   
-                   <div className="flex justify-between items-start z-10">
-                       <CreditCard className="opacity-80" />
-                       <span className="font-mono text-xs opacity-50">CREDIT</span>
-                   </div>
 
-                   <div className="z-10">
-                       <p className="font-mono text-xl tracking-widest mb-1">**** **** **** 4242</p>
-                       <p className="text-xs opacity-50">12/26</p>
-                   </div>
-
-                   <div className="flex justify-between items-end z-10">
-                       <p className="text-sm font-medium tracking-wide uppercase">{firmDetails.name.substring(0, 20)}</p>
-                       <div className="w-10 h-6 bg-white/20 rounded flex items-center justify-center text-[8px] font-bold">VISA</div>
-                   </div>
+              {/* Payment Method Selection */}
+              <div className="space-y-3">
+                {paymentMethods.map((method) => {
+                  const Icon = method.icon;
+                  const isSelected = selectedPaymentMethod === method.id;
+                  return (
+                    <button
+                      key={method.id}
+                      onClick={() => setSelectedPaymentMethod(method.id)}
+                      className={`w-full p-4 rounded-xl border-2 transition-all text-left ${
+                        isSelected
+                          ? 'border-smart-navy dark:border-smart-yellow bg-blue-50 dark:bg-slate-700'
+                          : 'border-gray-200 dark:border-slate-600 hover:border-gray-300 dark:hover:border-slate-500 bg-white dark:bg-slate-800'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`p-2 rounded-lg ${
+                          isSelected
+                            ? 'bg-smart-navy dark:bg-smart-yellow text-white dark:text-smart-navy'
+                            : 'bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-gray-400'
+                        }`}>
+                          <Icon size={20} />
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between">
+                            <p className={`font-bold ${
+                              isSelected ? 'text-smart-navy dark:text-white' : 'text-gray-700 dark:text-gray-300'
+                            }`}>
+                              {method.name}
+                            </p>
+                            {isSelected && (
+                              <div className="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
+                                <Check size={12} className="text-white" />
+                              </div>
+                            )}
+                          </div>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">{method.description}</p>
+                          <p className="text-xs font-mono text-gray-400 dark:text-gray-500 mt-1">{method.details}</p>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
 
-              <button className="w-full border border-gray-300 dark:border-slate-600 py-3 rounded-lg font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">
-                  Kartı Güncelle
-              </button>
+              {/* Card Visual - Only show when credit card is selected */}
+              {selectedPaymentMethod === 'credit_card' && (
+                <>
+                  <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-xl p-6 text-white shadow-xl relative overflow-hidden h-52 flex flex-col justify-between border border-gray-700">
+                       <div className="absolute top-0 right-0 p-32 bg-white/5 rounded-full blur-3xl -mr-10 -mt-10"></div>
+
+                       <div className="flex justify-between items-start z-10">
+                           <CreditCard className="opacity-80" />
+                           <span className="font-mono text-xs opacity-50">CREDIT</span>
+                       </div>
+
+                       <div className="z-10">
+                           <p className="font-mono text-xl tracking-widest mb-1">**** **** **** 4242</p>
+                           <p className="text-xs opacity-50">12/26</p>
+                       </div>
+
+                       <div className="flex justify-between items-end z-10">
+                           <p className="text-sm font-medium tracking-wide uppercase">{firmDetails.name.substring(0, 20)}</p>
+                           <div className="w-10 h-6 bg-white/20 rounded flex items-center justify-center text-[8px] font-bold">VISA</div>
+                       </div>
+                  </div>
+
+                  <button
+                    onClick={() => setShowCardUpdateModal(true)}
+                    className="w-full border border-gray-300 dark:border-slate-600 py-3 rounded-lg font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
+                  >
+                      Kartı Güncelle
+                  </button>
+                </>
+              )}
+
+              {/* Bank Transfer Info - Show when bank transfer is selected */}
+              {selectedPaymentMethod === 'bank_transfer' && (
+                <div className="bg-blue-50 dark:bg-slate-700 rounded-xl p-4 border border-blue-200 dark:border-slate-600">
+                  <h4 className="font-bold text-smart-navy dark:text-white mb-3 flex items-center gap-2">
+                    <Building2 size={18} />
+                    Banka Hesap Bilgileri
+                  </h4>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-500 dark:text-gray-400">Banka:</span>
+                      <span className="font-medium text-gray-700 dark:text-gray-200">Garanti BBVA</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500 dark:text-gray-400">Hesap Adı:</span>
+                      <span className="font-medium text-gray-700 dark:text-gray-200">Smartop Teknoloji A.Ş.</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500 dark:text-gray-400">IBAN:</span>
+                      <span className="font-mono text-xs text-gray-700 dark:text-gray-200">TR12 3456 7890 1234 5678 90</span>
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-3 bg-white dark:bg-slate-800 p-2 rounded">
+                    Açıklamaya firma adınızı ve fatura numaranızı yazmayı unutmayın.
+                  </p>
+                </div>
+              )}
+
+              {/* Marketplace Info - Show when marketplace is selected */}
+              {selectedPaymentMethod === 'marketplace' && (
+                <div className="bg-orange-50 dark:bg-slate-700 rounded-xl p-4 border border-orange-200 dark:border-slate-600">
+                  <h4 className="font-bold text-smart-navy dark:text-white mb-3 flex items-center gap-2">
+                    <Store size={18} />
+                    Market Ödeme Bilgileri
+                  </h4>
+                  <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">
+                    Hepsiburada veya Trendyol hesabınız üzerinden otomatik ödeme yapabilirsiniz.
+                  </p>
+                  <div className="flex gap-2">
+                    <button className="flex-1 bg-orange-500 hover:bg-orange-600 text-white py-2 rounded-lg font-bold text-sm transition-colors">
+                      Hepsiburada
+                    </button>
+                    <button className="flex-1 bg-orange-500 hover:bg-orange-600 text-white py-2 rounded-lg font-bold text-sm transition-colors">
+                      Trendyol
+                    </button>
+                  </div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-3">
+                    Market hesabınıza bağlı kredi kartınızdan çekim yapılacaktır.
+                  </p>
+                </div>
+              )}
           </div>
 
           {/* Invoice History */}
@@ -183,6 +491,100 @@ export const FinanceModule: React.FC<FinanceModuleProps> = ({ invoices, machines
               </div>
           </div>
       </div>
+
+      {/* Card Update Modal */}
+      {showCardUpdateModal && (
+        <div className="fixed inset-0 bg-smart-navy/80 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-md shadow-2xl">
+            <div className="bg-smart-navy dark:bg-black p-6 rounded-t-2xl">
+              <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                <CreditCard />
+                Kredi Kartı Güncelle
+              </h3>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-bold text-smart-navy dark:text-white mb-2">Kart Numarası</label>
+                <input
+                  type="text"
+                  value={cardDetails.number}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/\D/g, '').substring(0, 16);
+                    const formatted = value.replace(/(\d{4})/g, '$1 ').trim();
+                    setCardDetails({ ...cardDetails, number: formatted });
+                  }}
+                  placeholder="1234 5678 9012 3456"
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-smart-navy/20 outline-none bg-white text-gray-900 dark:bg-slate-700 dark:text-white font-mono"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-bold text-smart-navy dark:text-white mb-2">Son Kullanma</label>
+                  <input
+                    type="text"
+                    value={cardDetails.expiry}
+                    onChange={(e) => {
+                      let value = e.target.value.replace(/\D/g, '').substring(0, 4);
+                      if (value.length >= 2) {
+                        value = value.substring(0, 2) + '/' + value.substring(2);
+                      }
+                      setCardDetails({ ...cardDetails, expiry: value });
+                    }}
+                    placeholder="MM/YY"
+                    className="w-full px-4 py-3 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-smart-navy/20 outline-none bg-white text-gray-900 dark:bg-slate-700 dark:text-white font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-smart-navy dark:text-white mb-2">CVV</label>
+                  <input
+                    type="text"
+                    value={cardDetails.cvv}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/\D/g, '').substring(0, 3);
+                      setCardDetails({ ...cardDetails, cvv: value });
+                    }}
+                    placeholder="123"
+                    className="w-full px-4 py-3 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-smart-navy/20 outline-none bg-white text-gray-900 dark:bg-slate-700 dark:text-white font-mono"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-smart-navy dark:text-white mb-2">Kart Üzerindeki İsim</label>
+                <input
+                  type="text"
+                  value={cardDetails.name}
+                  onChange={(e) => setCardDetails({ ...cardDetails, name: e.target.value.toUpperCase() })}
+                  placeholder="AD SOYAD"
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-smart-navy/20 outline-none bg-white text-gray-900 dark:bg-slate-700 dark:text-white uppercase"
+                />
+              </div>
+            </div>
+
+            <div className="p-6 border-t border-gray-100 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 rounded-b-2xl flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setShowCardUpdateModal(false);
+                  setCardDetails({ number: '', expiry: '', cvv: '', name: '' });
+                }}
+                className="px-6 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-slate-700 rounded-lg font-medium transition-colors"
+              >
+                İptal
+              </button>
+              <button
+                onClick={handleUpdateCard}
+                disabled={!cardDetails.number || !cardDetails.expiry || !cardDetails.cvv || !cardDetails.name}
+                className="px-6 py-2 bg-smart-navy dark:bg-black text-white rounded-lg font-bold hover:bg-blue-900 dark:hover:bg-gray-700 flex items-center gap-2 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              >
+                <Check size={18} />
+                Kartı Kaydet
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

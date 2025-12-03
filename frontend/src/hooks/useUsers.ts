@@ -4,10 +4,11 @@ import { userService, User, CreateUserDto, UpdateUserDto, UserListParams } from 
 export const USERS_QUERY_KEY = 'users';
 export const OPERATORS_QUERY_KEY = 'operators';
 
-export const useUsers = (params?: UserListParams) => {
+export const useUsers = (params?: UserListParams, options?: { enabled?: boolean }) => {
   return useQuery({
     queryKey: [USERS_QUERY_KEY, params],
     queryFn: () => userService.getAll(params),
+    enabled: options?.enabled !== false,
   });
 };
 
@@ -19,10 +20,11 @@ export const useUser = (id: string) => {
   });
 };
 
-export const useOperators = () => {
+export const useOperators = (options?: { enabled?: boolean }) => {
   return useQuery({
     queryKey: [OPERATORS_QUERY_KEY],
     queryFn: () => userService.getOperators(),
+    enabled: options?.enabled !== false,
   });
 };
 

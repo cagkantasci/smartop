@@ -224,6 +224,9 @@ export interface TranslationDictionary {
       nameLabel: string;
       itemsLabel: string;
       save: string;
+      cancel: string;
+      namePlaceholder: string;
+      itemPlaceholder: string;
     }
   };
   approvals: {
@@ -274,6 +277,33 @@ export interface TranslationDictionary {
       taxOffice: string;
       phone: string;
       address: string;
-    }
+      profilePhoto: string;
+      profilePhotoHint: string;
+      appPreferences: string;
+      darkMode: string;
+      lightMode: string;
+      companyInfoImportant: string;
+      companyInfoDesc: string;
+      currentPassword: string;
+      newPassword: string;
+      confirmPassword: string;
+      accountSecurity: string;
+      securityHint: string;
+      twoFactor: string;
+      twoFactorDesc: string;
+      activate: string;
+    };
+    notifications: {
+      emailAlerts: string;
+      emailAlertsDesc: string;
+      pushNotifications: string;
+      pushDesc: string;
+      maintenanceAlerts: string;
+      maintenanceDesc: string;
+      weeklyReport: string;
+      weeklyReportDesc: string;
+      marketing: string;
+      marketingDesc: string;
+    };
   };
 }

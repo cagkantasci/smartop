@@ -156,7 +156,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ machines, checklists, jobs
                                     {m.status}
                                 </span>
                             </td>
-                            <td className="p-4 font-mono dark:text-gray-300">{m.engineHours}s</td>
+                            <td className="p-4 font-mono dark:text-gray-300">{m.engineHours.toLocaleString()} saat</td>
                             <td className="p-4 text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1">
                                 <MapPin size={14}/> {m.location?.address || 'Bilinmiyor'}
                             </td>
@@ -204,7 +204,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ machines, checklists, jobs
                         </div>
                         <div className="bg-gray-50 dark:bg-slate-700 p-3 rounded-lg border border-gray-200 dark:border-slate-600">
                             <p className="text-xs text-gray-500 dark:text-gray-400 uppercase font-bold">{t.table.hours}</p>
-                            <p className="font-mono font-bold text-smart-navy dark:text-white">{selectedMachine.engineHours}s</p>
+                            <p className="font-mono font-bold text-smart-navy dark:text-white">{selectedMachine.engineHours.toLocaleString()} saat</p>
                         </div>
                         <div className="bg-gray-50 dark:bg-slate-700 p-3 rounded-lg border border-gray-200 dark:border-slate-600">
                             <p className="text-xs text-gray-500 dark:text-gray-400 uppercase font-bold">Son Bakım</p>
@@ -307,7 +307,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ machines, checklists, jobs
                <button onClick={goBack} className="m-8 mb-0 flex items-center gap-2 text-gray-500 hover:text-smart-navy dark:text-gray-400 dark:hover:text-white">
                 <ArrowLeft size={20} /> {t.viewAll}
                </button>
-               <ApprovalWorkflow checklists={checklists} handleApproval={handleApproval} />
+               <ApprovalWorkflow checklists={checklists} machines={machines} handleApproval={handleApproval} />
           </div>
       );
   }
@@ -333,7 +333,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ machines, checklists, jobs
           </div>
           <div>
             <p className="text-sm text-gray-500 dark:text-gray-400">{t.totalEngineHours}</p>
-            <p className="text-2xl font-bold text-gray-900 dark:text-white">{totalEngineHours}s</p>
+            <p className="text-2xl font-bold text-gray-900 dark:text-white">{totalEngineHours.toLocaleString()} saat</p>
           </div>
           <ChevronRight className="ml-auto text-gray-300 dark:text-gray-600 group-hover:text-smart-navy dark:group-hover:text-white" />
         </div>
@@ -477,7 +477,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ machines, checklists, jobs
                         }`}>
                           {machine.status}
                         </span>
-                        <span className="text-xs font-mono text-gray-600">{machine.engineHours}s</span>
+                        <span className="text-xs font-mono text-gray-600">{machine.engineHours.toLocaleString()} saat</span>
                       </div>
                     </div>
                   </Popup>

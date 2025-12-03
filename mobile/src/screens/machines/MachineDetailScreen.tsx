@@ -15,7 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { Header, Card, StatusBadge, Button } from '../../components/ui';
-import { machinesApi, checklistsApi } from '../../services/api';
+import { machinesApi, checklistsApi, usersApi } from '../../services/api';
 import { Machine, MachineStatus, ChecklistSubmission } from '../../types';
 
 const { width } = Dimensions.get('window');
@@ -113,7 +113,7 @@ export function MachineDetailScreen() {
 
       // Load checklists for this machine
       try {
-        const checklistRes = await checklistsApi.getSubmissions({ machineId });
+        const checklistRes = await machinesApi.getChecklists(machineId);
         let checklistArray: ChecklistSubmission[] = [];
         if (Array.isArray(checklistRes)) {
           checklistArray = checklistRes;
@@ -128,17 +128,17 @@ export function MachineDetailScreen() {
         setChecklists([]);
       }
 
-      // Load assigned operator if exists
-      if (data.operatorId) {
-        // In a real app, fetch operator from API
-        // Mock for now
+      // Load assigned operator from machine data
+      if (data.assignedOperator) {
         setAssignedOperator({
-          id: data.operatorId,
-          firstName: 'Atanmış',
-          lastName: 'Operatör',
-          email: 'operator@example.com',
+          id: data.assignedOperator.id,
+          firstName: data.assignedOperator.firstName,
+          lastName: data.assignedOperator.lastName,
+          email: data.assignedOperator.email,
           role: 'operator',
         });
+      } else {
+        setAssignedOperator(null);
       }
     } catch (error) {
       console.error('Failed to load machine:', error);
@@ -148,14 +148,21 @@ export function MachineDetailScreen() {
   };
 
   const loadOperators = async () => {
-    // In a real app, fetch from users API
-    // Mock operators for now
-    setOperators([
-      { id: '1', firstName: 'Ahmet', lastName: 'Yılmaz', email: 'ahmet@example.com', role: 'operator' },
-      { id: '2', firstName: 'Mehmet', lastName: 'Demir', email: 'mehmet@example.com', role: 'operator' },
-      { id: '3', firstName: 'Ali', lastName: 'Kaya', email: 'ali@example.com', role: 'operator' },
-      { id: '4', firstName: 'Hasan', lastName: 'Çelik', email: 'hasan@example.com', role: 'operator' },
-    ]);
+    try {
+      const response = await usersApi.getAll({ role: 'operator' });
+      let operatorsArray: Operator[] = [];
+      if (Array.isArray(response)) {
+        operatorsArray = response;
+      } else if (response && Array.isArray(response.data)) {
+        operatorsArray = response.data;
+      } else if (response && Array.isArray(response.users)) {
+        operatorsArray = response.users;
+      }
+      setOperators(operatorsArray);
+    } catch (error) {
+      console.error('Failed to load operators:', error);
+      setOperators([]);
+    }
   };
 
   const onRefresh = useCallback(async () => {
@@ -172,15 +179,26 @@ export function MachineDetailScreen() {
 
     setIsSubmitting(true);
     try {
-      await machinesApi.update(machineId, { operatorId: selectedOperatorId });
-      const selectedOp = operators.find(op => op.id === selectedOperatorId);
-      if (selectedOp) {
-        setAssignedOperator(selectedOp);
+      const result = await machinesApi.assignOperator(machineId, selectedOperatorId);
+      if (result.assignedOperator) {
+        setAssignedOperator({
+          id: result.assignedOperator.id,
+          firstName: result.assignedOperator.firstName,
+          lastName: result.assignedOperator.lastName,
+          email: result.assignedOperator.email,
+          role: 'operator',
+        });
+      } else {
+        const selectedOp = operators.find(op => op.id === selectedOperatorId);
+        if (selectedOp) {
+          setAssignedOperator(selectedOp);
+        }
       }
       Alert.alert('Başarılı', 'Operatör başarıyla atandı');
       setShowAssignModal(false);
       setSelectedOperatorId('');
     } catch (error) {
+      console.error('Assign operator error:', error);
       Alert.alert('Hata', 'Operatör atanamadı');
     } finally {
       setIsSubmitting(false);
@@ -198,10 +216,11 @@ export function MachineDetailScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              await machinesApi.update(machineId, { operatorId: null });
+              await machinesApi.assignOperator(machineId, null);
               setAssignedOperator(null);
               Alert.alert('Başarılı', 'Operatör kaldırıldı');
             } catch (error) {
+              console.error('Remove operator error:', error);
               Alert.alert('Hata', 'Operatör kaldırılamadı');
             }
           },
@@ -468,7 +487,7 @@ export function MachineDetailScreen() {
               onPress={() => setShowAssignModal(true)}
               variant="primary"
               size="md"
-              icon="person-add-outline"
+              icon={<Ionicons name="person-add-outline" size={18} color="#111827" />}
               style={styles.assignMainButton}
             />
           </View>

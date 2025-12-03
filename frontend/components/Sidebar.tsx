@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { LayoutDashboard, Truck, CheckSquare, Settings, LogOut, HardHat, Building2, Phone, Briefcase, Wallet, ClipboardList, Sun, Moon, Smartphone, Users } from 'lucide-react';
+import { LayoutDashboard, Truck, CheckSquare, Settings, LogOut, HardHat, Building2, Phone, Briefcase, Wallet, ClipboardList, Sun, Moon, Users } from 'lucide-react';
 import { Language, TranslationDictionary } from '../types';
 
 interface SidebarProps {
@@ -80,21 +80,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 </span>
             </div>
 
-            {userName && (
-              <div className="mt-3 pt-3 border-t border-white/10">
-                <p className="text-xs text-gray-400 mb-1">Giriş yapan:</p>
-                <p className="text-sm font-medium text-white">{userName}</p>
-                {userRole && (
-                  <span className={`inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                    userRole === 'admin' ? 'bg-red-500/20 text-red-300' :
-                    userRole === 'manager' ? 'bg-blue-500/20 text-blue-300' :
-                    'bg-green-500/20 text-green-300'
-                  }`}>
-                    {userRole === 'admin' ? 'Admin' : userRole === 'manager' ? 'Yönetici' : 'Operatör'}
-                  </span>
-                )}
-              </div>
-            )}
         </div>
       </div>
 
@@ -114,14 +99,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </button>
         ))}
         
-        {/* Mobile Demo Button */}
-        <button
-            onClick={() => setCurrentView('mobile-sim')}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg border border-dashed border-gray-600 hover:border-smart-yellow hover:text-smart-yellow transition-colors text-gray-400 mt-4 group"
-        >
-            <Smartphone className="w-5 h-5 group-hover:animate-pulse" />
-            <span className="text-sm">Mobil App Demo</span>
-        </button>
       </nav>
 
       <div className="p-4 border-t border-white/10 space-y-2">

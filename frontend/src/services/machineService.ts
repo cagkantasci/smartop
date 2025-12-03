@@ -47,7 +47,8 @@ export interface UpdateMachineDto extends Partial<CreateMachineDto> {
   locationLat?: number;
   locationLng?: number;
   locationAddress?: string;
-  assignedOperatorId?: string;
+  assignedOperatorId?: string | null;
+  checklistTemplateId?: string | null;
 }
 
 export interface MachineListParams {

@@ -13,7 +13,34 @@ interface OperatorManagementProps {
 
 // Available Options for Multi-Select
 const LICENSE_OPTIONS = ['G Sınıfı', 'C Sınıfı (Kamyon)', 'Forklift Sertifikası', 'Vinç Operatör Belgesi', 'SRC Belgesi', 'Psikoteknik'];
-const SPECIALTY_OPTIONS = ['Ekskavatör', 'Dozer', 'Vinç', 'Kamyon', 'Yükleyici', 'Forklift', 'Greyder'];
+
+// Specialty options with English values (for API) and Turkish labels (for UI)
+const SPECIALTY_OPTIONS: { value: string; label: string }[] = [
+  { value: 'excavator', label: 'Ekskavatör' },
+  { value: 'dozer', label: 'Dozer' },
+  { value: 'crane', label: 'Vinç' },
+  { value: 'truck', label: 'Kamyon' },
+  { value: 'loader', label: 'Yükleyici' },
+  { value: 'forklift', label: 'Forklift' },
+  { value: 'grader', label: 'Greyder' },
+];
+
+// Helper to get Turkish label from English value
+const getSpecialtyLabel = (value: string): string => {
+  const found = SPECIALTY_OPTIONS.find(opt => opt.value === value.toLowerCase());
+  return found ? found.label : value;
+};
+
+// Helper to check if a specialty is selected (handles both Turkish labels and English values)
+const isSpecialtySelected = (formSpecialties: string[], optionValue: string): boolean => {
+  const option = SPECIALTY_OPTIONS.find(opt => opt.value === optionValue);
+  if (!option) return false;
+  // Check if either the value or label is in the array
+  return formSpecialties.some(s =>
+    s.toLowerCase() === optionValue.toLowerCase() ||
+    s.toLowerCase() === option.label.toLowerCase()
+  );
+};
 
 export const OperatorManagement: React.FC<OperatorManagementProps> = ({ operators, addOperator, updateOperator, deleteOperator, t }) => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -97,9 +124,12 @@ export const OperatorManagement: React.FC<OperatorManagementProps> = ({ operator
       });
   };
 
-  const filteredOperators = operators.filter(op => 
+  const filteredOperators = operators.filter(op =>
     op.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    op.specialty.some(s => s.toLowerCase().includes(searchTerm.toLowerCase()))
+    op.specialty.some(s =>
+      s.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      getSpecialtyLabel(s).toLowerCase().includes(searchTerm.toLowerCase())
+    )
   );
 
   return (
@@ -158,7 +188,7 @@ export const OperatorManagement: React.FC<OperatorManagementProps> = ({ operator
                 <div className="flex flex-wrap gap-1 justify-center mt-2">
                     {op.specialty.map((spec, idx) => (
                         <span key={idx} className="inline-block px-2 py-0.5 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded text-[10px] font-bold border border-blue-100 dark:border-blue-800">
-                            {spec}
+                            {getSpecialtyLabel(spec)}
                         </span>
                     ))}
                     {op.specialty.length === 0 && <span className="text-xs text-gray-400 italic">Uzmanlık Yok</span>}
@@ -249,20 +279,20 @@ export const OperatorManagement: React.FC<OperatorManagementProps> = ({ operator
                             <label className="block text-sm font-bold text-smart-navy dark:text-gray-300 mb-2">{t.form.specialty} (Çoklu Seçim)</label>
                             <div className="flex flex-wrap gap-2 bg-gray-50 dark:bg-slate-900 p-3 rounded-xl border border-gray-200 dark:border-slate-700 max-h-48 overflow-y-auto custom-scrollbar">
                                 {SPECIALTY_OPTIONS.map(opt => {
-                                    const isSelected = formData.specialty?.includes(opt);
+                                    const isSelected = isSpecialtySelected(formData.specialty || [], opt.value);
                                     return (
                                         <button
-                                            key={opt}
+                                            key={opt.value}
                                             type="button"
-                                            onClick={() => toggleSelection('specialty', opt)}
+                                            onClick={() => toggleSelection('specialty', opt.value)}
                                             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border flex items-center gap-1 ${
-                                                isSelected 
-                                                ? 'bg-blue-600 text-white border-blue-600' 
+                                                isSelected
+                                                ? 'bg-blue-600 text-white border-blue-600'
                                                 : 'bg-white text-gray-500 border-gray-200 hover:border-blue-600 dark:bg-slate-800 dark:text-gray-400 dark:border-slate-600'
                                             }`}
                                         >
                                             {isSelected && <Check size={12} strokeWidth={3} />}
-                                            {opt}
+                                            {opt.label}
                                         </button>
                                     );
                                 })}

@@ -7,8 +7,9 @@ import {
   Min,
   Max,
   IsNumber,
-  IsUUID,
   IsDateString,
+  ValidateIf,
+  Matches,
 } from 'class-validator';
 
 export class UpdateMachineDto {
@@ -89,10 +90,16 @@ export class UpdateMachineDto {
   notes?: string;
 
   @IsOptional()
-  @IsUUID()
+  @ValidateIf((o) => o.assignedOperatorId !== null && o.assignedOperatorId !== '')
+  @Matches(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i, {
+    message: 'assignedOperatorId must be a valid UUID format',
+  })
   assignedOperatorId?: string | null;
 
   @IsOptional()
-  @IsUUID()
+  @ValidateIf((o) => o.checklistTemplateId !== null && o.checklistTemplateId !== '')
+  @Matches(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i, {
+    message: 'checklistTemplateId must be a valid UUID format',
+  })
   checklistTemplateId?: string | null;
 }

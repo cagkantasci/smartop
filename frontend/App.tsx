@@ -26,6 +26,7 @@ import {
   useCreateJob,
   useUpdateJob,
   useDeleteJob,
+  useAssignJob,
   useChecklistTemplates,
   useCreateTemplate,
   useUpdateTemplate,
@@ -43,74 +44,13 @@ import {
 // import { GeminiAdvisor } from './components/GeminiAdvisor';
 import { Machine, MachineStatus, ChecklistItem, ChecklistStatus, Operator, ChecklistTemplate, Job, Invoice, FirmDetails, Language, TranslationDictionary } from './types';
 
-// Updated Mock Operators with Arrays
-const MOCK_OPERATORS: Operator[] = [
-    { id: 'op1', name: 'Ahmet Yılmaz', licenseType: ['G Sınıfı'], specialty: ['Ekskavatör', 'Yükleyici'], avatar: 'https://ui-avatars.com/api/?name=Ahmet+Yilmaz&background=0F2C59&color=fff', phone: '+90 555 111 22 33', email: 'ahmet@firma.com' },
-    { id: 'op2', name: 'Mehmet Demir', licenseType: ['Vinç Operatör Belgesi', 'C Sınıfı (Kamyon)'], specialty: ['Vinç'], avatar: 'https://ui-avatars.com/api/?name=Mehmet+Demir&background=F59E0B&color=000', phone: '+90 555 444 55 66', email: 'mehmet@firma.com' },
-    { id: 'op3', name: 'Ayşe Kaya', licenseType: ['G Sınıfı'], specialty: ['Dozer'], avatar: 'https://ui-avatars.com/api/?name=Ayse+Kaya&background=15803d&color=fff', phone: '+90 555 777 88 99', email: 'ayse@firma.com' },
-];
-
-const MOCK_TEMPLATES: ChecklistTemplate[] = [
-    { id: 'tpl1', name: 'Ekskavatör Günlük Kontrol (Sabah)', itemsCount: 5, items: ['Motor Yağı Seviyesi', 'Radyatör Suyu', 'Hidrolik Sızıntı Kontrolü', 'Yürüyüş Takımları', 'Kova Tırnakları'] },
-    { id: 'tpl2', name: 'Vinç Güvenlik Kontrolü', itemsCount: 6, items: ['Halat Kontrolü', 'Kanca Emniyet Mandalı', 'Limit Switch Testi', 'Hidrolik Basınç Değeri', 'Destek Ayakları', 'Rüzgar Ölçer'] },
-    { id: 'tpl3', name: 'Kamyon Lastik ve Motor Kontrolü', itemsCount: 4, items: ['Lastik Basınçları', 'Fren Sistemi', 'Sinyal ve Farlar', 'Kasa Kapak Kilitleri'] },
-];
-const MOCK_MACHINES: Machine[] = [
-  { id: '1', name: 'Şantiye-1 Ana Ekskavatör', brand: 'Caterpillar', model: '320 GC', year: '2022', type: 'Excavator', serialNumber: 'CAT-320-XE-001', status: MachineStatus.Active, engineHours: 4200, lastService: '2023-10-15', imageUrl: 'https://images.unsplash.com/photo-1582239634898-3564c768832a?q=80&w=800&auto=format&fit=crop', assignedOperatorId: 'op1', assignedChecklistId: 'tpl1', location: { lat: 41.0082, lng: 28.9784, address: 'Kuzey Marmara Otoyolu, Şantiye A' }, commonFaults: [{ partName: 'Hidrolik Hortum', frequency: 5 }, { partName: 'Palet Gergi', frequency: 2 }, { partName: 'Kova Tırnağı', frequency: 8 }], serviceHistory: [{ id: 's1', date: '2023-10-15', type: 'Maintenance', description: '500 Saat Bakımı (Yağ, Filtre)', technician: 'Servis A', cost: 4500 }, { id: 's2', date: '2023-08-20', type: 'Repair', description: 'Hidrolik piston değişimi', technician: 'Servis B', cost: 12000 }] },
-  { id: '2', name: 'Yol Düzeltme Dozeri', brand: 'Komatsu', model: 'D155AX', year: '2020', type: 'Dozer', serialNumber: 'KOM-D155-99', status: MachineStatus.Maintenance, engineHours: 11500, lastService: '2023-11-01', imageUrl: 'https://images.unsplash.com/photo-1547625832-6a84d46f90d4?q=80&w=800&auto=format&fit=crop', assignedOperatorId: 'op3', location: { lat: 39.9334, lng: 32.8597, address: 'Ankara Gölbaşı Yol Çalışması' }, commonFaults: [{ partName: 'Yürüyüş Takımı', frequency: 6 }, { partName: 'Bıçak Pimi', frequency: 4 }], serviceHistory: [{ id: 's3', date: '2023-11-01', type: 'Maintenance', description: 'Ağır Bakım', technician: 'Merkez Servis', cost: 25000 }] },
-  { id: '3', name: 'Liman Vinci 1', brand: 'Liebherr', model: 'LTM 1120', year: '2023', type: 'Crane', serialNumber: 'LBH-LTM-12', status: MachineStatus.Idle, engineHours: 890, lastService: '2023-09-20', imageUrl: 'https://images.unsplash.com/photo-1579407364101-72782e541176?q=80&w=800&auto=format&fit=crop', assignedOperatorId: 'op2', assignedChecklistId: 'tpl2', location: { lat: 38.4237, lng: 27.1428, address: 'Alsancak Limanı' }, commonFaults: [], serviceHistory: [] },
-];
-const MOCK_JOBS: Job[] = [
-    {
-      id: 'j1',
-      title: 'Kuzey Otoyolu Viyadük İnşaatı',
-      location: 'İstanbul, Kuzey Marmara Otoyolu',
-      description: 'Viyadük inşaatı ve temel kazı çalışmaları',
-      status: 'In Progress',
-      progress: 65,
-      priority: 'high',
-      startDate: '2023-01-10',
-      endDate: '2024-06-15',
-      assignedMachineIds: ['1'],
-      coordinates: { lat: 41.0082, lng: 28.9784 }
-    },
-    {
-      id: 'j2',
-      title: 'Gölbaşı Altyapı Düzenleme',
-      location: 'Ankara, Gölbaşı',
-      description: 'Yol düzenleme ve altyapı iyileştirme projesi',
-      status: 'Delayed',
-      progress: 30,
-      priority: 'medium',
-      startDate: '2023-06-15',
-      endDate: '2024-03-01',
-      assignedMachineIds: ['2'],
-      coordinates: { lat: 39.9334, lng: 32.8597 }
-    },
-    {
-      id: 'j3',
-      title: 'Liman Genişletme Projesi',
-      location: 'İzmir, Alsancak Limanı',
-      description: 'Liman rıhtım genişletme ve yük kapasitesi artırma',
-      status: 'In Progress',
-      progress: 85,
-      priority: 'urgent',
-      startDate: '2022-11-20',
-      endDate: '2024-01-30',
-      assignedMachineIds: ['3'],
-      coordinates: { lat: 38.4237, lng: 27.1428 }
-    }
-];
-const MOCK_CHECKLISTS: ChecklistItem[] = [
-  { id: '101', machineId: 'CAT-320-XE-001', operatorName: 'Ahmet Yilmaz', date: '2023-11-20 07:30', status: ChecklistStatus.Pending, issues: [], notes: 'İşe hazır.', entries: [{ label: 'Motor Yağı Seviyesi', isOk: true, value: 'Tam' }, { label: 'Radyatör Suyu', isOk: true, value: 'Normal' }, { label: 'Hidrolik Sızıntı Kontrolü', isOk: true }, { label: 'Yürüyüş Takımları', isOk: true }, { label: 'Kova Tırnakları', isOk: true }] },
-  { id: '102', machineId: 'KOM-D155-99', operatorName: 'Mehmet Demir', date: '2023-11-20 07:45', status: ChecklistStatus.Pending, issues: ['Hidrolik sızıntısı var', 'Sol palet sesi'], notes: 'Acil kontrol gerekiyor.', entries: [{ label: 'Motor Yağı Seviyesi', isOk: true, value: 'Tam' }, { label: 'Radyatör Suyu', isOk: true, value: 'Normal' }, { label: 'Hidrolik Sızıntı Kontrolü', isOk: false, value: 'Damlatma Mevcut', photoUrl: 'https://images.unsplash.com/photo-1621905252507-b35492cc7471?q=80&w=300&auto=format&fit=crop' }, { label: 'Yürüyüş Takımları', isOk: false, value: 'Ses Geliyor' }, { label: 'Fren Sistemi', isOk: true }] },
-  { id: '103', machineId: 'LBH-LTM-12', operatorName: 'Caner Erkin', date: '2023-11-19 18:00', status: ChecklistStatus.Approved, issues: [], notes: 'Gün sonu kontrolü.', entries: [] },
-];
-const MOCK_INVOICES: Invoice[] = [
-  { id: 'INV-2023-001', date: '2023-10-01', amount: 1500, status: 'Paid', description: 'Ekim 2023 Makine Kullanım Bedeli (3 Makine)', items: ['3 x Makine Aktivasyonu', 'Sistem Kullanım Bedeli'] },
-  { id: 'INV-2023-002', date: '2023-11-01', amount: 1500, status: 'Paid', description: 'Kasım 2023 Makine Kullanım Bedeli (3 Makine)', items: ['3 x Makine Aktivasyonu'] },
-  { id: 'INV-2023-003', date: '2023-12-01', amount: 1500, status: 'Pending', description: 'Aralık 2023 Makine Kullanım Bedeli (3 Makine)', items: ['3 x Makine Aktivasyonu'] },
-];
+// Empty arrays - no mock data, API will provide real data
+const MOCK_OPERATORS: Operator[] = [];
+const MOCK_TEMPLATES: ChecklistTemplate[] = [];
+const MOCK_MACHINES: Machine[] = [];
+const MOCK_JOBS: Job[] = [];
+const MOCK_CHECKLISTS: ChecklistItem[] = [];
+const MOCK_INVOICES: Invoice[] = [];
 
 const DICTIONARY: Record<Language, TranslationDictionary> = {
   tr: {
@@ -119,10 +59,10 @@ const DICTIONARY: Record<Language, TranslationDictionary> = {
     machines: { title: 'Makine Parkı', subtitle: 'Filo yönetimi, atamalar ve kullanım maliyetleri.', payAsYouGo: 'Kullandığın Kadar Öde', addMachine: 'Makine Ekle', searchPlaceholder: 'İsim, marka veya seri no ile arayın...', cart: { title: 'Sepet Tutarı', confirm: 'Sepeti Onayla', total: 'Toplam Tutar', empty: 'Sepetiniz boş.' }, modal: { title: 'Yeni Makine Ekle', smartFill: 'Bilgileri Getir', cancel: 'İptal', add: 'Listeye ve Sepete Ekle' } },
     operators: { title: 'Operatör Yönetimi', subtitle: 'Saha personelini, yetki belgelerini ve iletişim bilgilerini yönetin.', addOperator: 'Operatör Ekle', editOperator: 'Operatörü Düzenle', form: { name: 'Ad Soyad', license: 'Ehliyet / Sertifika', specialty: 'Uzmanlık', phone: 'Telefon', email: 'E-posta', save: 'Kaydet', cancel: 'İptal' } },
     jobs: { title: 'İş ve Şantiye Yönetimi', subtitle: 'Aktif projeleri takip edin ve makineleri şantiyelere atayın.', addJob: 'Yeni İş Ekle', status: { inProgress: 'Devam Ediyor', delayed: 'Gecikmede', completed: 'Tamamlandı' } },
-    checklists: { title: 'Kontrol Listesi Şablonları', subtitle: 'Makineler için günlük kontrol formlarını yönetin.', addTemplate: 'Yeni Şablon Oluştur', itemsCount: 'Kontrol Maddesi', modal: { titleNew: 'Yeni Kontrol Listesi', titleEdit: 'Şablonu Düzenle', nameLabel: 'Şablon Adı', itemsLabel: 'Kontrol Maddeleri', save: 'Şablonu Kaydet' } },
+    checklists: { title: 'Kontrol Listesi Şablonları', subtitle: 'Makineler için günlük kontrol formlarını yönetin.', addTemplate: 'Yeni Şablon Oluştur', itemsCount: 'Kontrol Maddesi', modal: { titleNew: 'Yeni Kontrol Listesi', titleEdit: 'Şablonu Düzenle', nameLabel: 'Şablon Adı', itemsLabel: 'Kontrol Maddeleri', save: 'Şablonu Kaydet', cancel: 'İptal', namePlaceholder: 'Örn: Ekskavatör Günlük Bakım', itemPlaceholder: 'Örn: Motor Yağı Kontrolü' } },
     approvals: { title: 'Onay Kuyruğu', subtitle: 'Operatörlerden gelen günlük kontrol formlarını inceleyin.', empty: 'Her Şey Güncel!', approve: 'Onayla', reject: 'Reddet', review: 'İncele', queue: 'Ön Kontrol' },
     finance: { title: 'Finans ve Faturalandırma', subtitle: 'Harcamalarınızı ve geçmiş faturalarınızı yönetin.', downloadStatement: 'Ekstre İndir', currentMonth: 'Güncel Ay Tahmini', nextBilling: 'Sonraki Fatura Tarihi', discountStatus: 'İndirim Durumu', paymentMethod: 'Ödeme Yöntemi', invoiceHistory: 'Fatura Geçmişi', table: { invoiceNo: 'Fatura No', date: 'Tarih', desc: 'Açıklama', amount: 'Tutar', status: 'Durum' } },
-    settings: { title: 'Ayarlar', subtitle: 'Hesap, firma ve uygulama tercihlerinizi yönetin.', tabs: { profile: 'Profil Ayarları', company: 'Firma Bilgileri', notifications: 'Bildirimler', security: 'Güvenlik' }, save: 'Değişiklikleri Kaydet', saved: 'Kaydedildi!', labels: { fullName: 'Ad Soyad', title: 'Unvan', email: 'E-posta Adresi', language: 'Dil Seçimi', theme: 'Tema', firmName: 'Firma Unvanı', taxNo: 'Vergi Numarası', taxOffice: 'Vergi Dairesi', phone: 'Telefon', address: 'Adres' } }
+    settings: { title: 'Ayarlar', subtitle: 'Hesap, firma ve uygulama tercihlerinizi yönetin.', tabs: { profile: 'Profil Ayarları', company: 'Firma Bilgileri', notifications: 'Bildirimler', security: 'Güvenlik' }, save: 'Değişiklikleri Kaydet', saved: 'Kaydedildi!', labels: { fullName: 'Ad Soyad', title: 'Unvan', email: 'E-posta Adresi', language: 'Dil Seçimi', theme: 'Tema', firmName: 'Firma Unvanı', taxNo: 'Vergi Numarası', taxOffice: 'Vergi Dairesi', phone: 'Telefon', address: 'Adres', profilePhoto: 'Profil Fotoğrafı', profilePhotoHint: 'PNG, JPG formatında max 2MB.', appPreferences: 'Uygulama Tercihleri', darkMode: 'Karanlık Mod', lightMode: 'Aydınlık Mod', companyInfoImportant: 'Firma Bilgileri Önemlidir', companyInfoDesc: 'Bu bilgiler faturalarınızda ve operatörlerinizin ekranında görünecektir.', currentPassword: 'Mevcut Şifre', newPassword: 'Yeni Şifre', confirmPassword: 'Yeni Şifre (Tekrar)', accountSecurity: 'Hesap Güvenliği', securityHint: 'Şifrenizi düzenli olarak değiştirmeniz önerilir.', twoFactor: 'İki Faktörlü Doğrulama (2FA)', twoFactorDesc: 'Giriş yaparken telefonunuza kod gönderilir.', activate: 'Aktifleştir' }, notifications: { emailAlerts: 'E-posta Bildirimleri', emailAlertsDesc: 'Önemli güncellemeleri e-posta ile al.', pushNotifications: 'Anlık Bildirimler (Push)', pushDesc: 'Tarayıcı üzerinden anlık uyarılar.', maintenanceAlerts: 'Bakım Uyarıları', maintenanceDesc: 'Makine bakım zamanı geldiğinde uyar.', weeklyReport: 'Haftalık Rapor', weeklyReportDesc: 'Her Pazartesi haftalık özet raporu gönder.', marketing: 'Kampanya ve Duyurular', marketingDesc: 'Yeni özellikler ve indirimlerden haberdar ol.' } }
   },
   en: {
     sidebar: { dashboard: 'Dashboard', machines: 'Fleet Management', operators: 'Operator Management', jobs: 'Job Management', checklists: 'Checklists', approvals: 'Approvals', finance: 'Finance & Invoices', settings: 'Settings', firmInfo: 'Company Info', managerPortal: 'Manager Portal', logout: 'Log Out', darkMode: 'Dark Mode', lightMode: 'Light Mode' },
@@ -130,10 +70,10 @@ const DICTIONARY: Record<Language, TranslationDictionary> = {
     machines: { title: 'Machine Fleet', subtitle: 'Fleet management, assignments and usage costs.', payAsYouGo: 'Pay As You Go', addMachine: 'Add Machine', searchPlaceholder: 'Search by name, brand or serial...', cart: { title: 'Cart Total', confirm: 'Confirm Cart', total: 'Total Amount', empty: 'Cart is empty.' }, modal: { title: 'Add New Machine', smartFill: 'Smart Fill', cancel: 'Cancel', add: 'Add to List & Cart' } },
     operators: { title: 'Operator Management', subtitle: 'Manage field personnel, licenses and contact info.', addOperator: 'Add Operator', editOperator: 'Edit Operator', form: { name: 'Full Name', license: 'License / Certificate', specialty: 'Specialty', phone: 'Phone', email: 'Email', save: 'Save', cancel: 'Cancel' } },
     jobs: { title: 'Job & Site Management', subtitle: 'Track active projects and assign machines.', addJob: 'Add New Job', status: { inProgress: 'In Progress', delayed: 'Delayed', completed: 'Completed' } },
-    checklists: { title: 'Checklist Templates', subtitle: 'Manage daily inspection forms for machines.', addTemplate: 'Create New Template', itemsCount: 'Checklist Items', modal: { titleNew: 'New Checklist', titleEdit: 'Edit Template', nameLabel: 'Template Name', itemsLabel: 'Checklist Items', save: 'Save Template' } },
+    checklists: { title: 'Checklist Templates', subtitle: 'Manage daily inspection forms for machines.', addTemplate: 'Create New Template', itemsCount: 'Checklist Items', modal: { titleNew: 'New Checklist', titleEdit: 'Edit Template', nameLabel: 'Template Name', itemsLabel: 'Checklist Items', save: 'Save Template', cancel: 'Cancel', namePlaceholder: 'E.g.: Excavator Daily Check', itemPlaceholder: 'E.g.: Engine Oil Check' } },
     approvals: { title: 'Approval Queue', subtitle: 'Review daily inspection forms from operators.', empty: 'All Caught Up!', approve: 'Approve', reject: 'Reject', review: 'Review', queue: 'Pre-Check' },
     finance: { title: 'Finance & Billing', subtitle: 'Manage expenses and invoice history.', downloadStatement: 'Download Statement', currentMonth: 'Current Month Forecast', nextBilling: 'Next Billing Date', discountStatus: 'Discount Status', paymentMethod: 'Payment Method', invoiceHistory: 'Invoice History', table: { invoiceNo: 'Invoice No', date: 'Date', desc: 'Description', amount: 'Amount', status: 'Status' } },
-    settings: { title: 'Settings', subtitle: 'Manage account, company, and app preferences.', tabs: { profile: 'Profile Settings', company: 'Company Info', notifications: 'Notifications', security: 'Security' }, save: 'Save Changes', saved: 'Saved!', labels: { fullName: 'Full Name', title: 'Job Title', email: 'Email Address', language: 'Language Selection', theme: 'Theme', firmName: 'Company Name', taxNo: 'Tax Number', taxOffice: 'Tax Office', phone: 'Phone', address: 'Address' } }
+    settings: { title: 'Settings', subtitle: 'Manage account, company, and app preferences.', tabs: { profile: 'Profile Settings', company: 'Company Info', notifications: 'Notifications', security: 'Security' }, save: 'Save Changes', saved: 'Saved!', labels: { fullName: 'Full Name', title: 'Job Title', email: 'Email Address', language: 'Language Selection', theme: 'Theme', firmName: 'Company Name', taxNo: 'Tax Number', taxOffice: 'Tax Office', phone: 'Phone', address: 'Address', profilePhoto: 'Profile Photo', profilePhotoHint: 'PNG, JPG format max 2MB.', appPreferences: 'App Preferences', darkMode: 'Dark Mode', lightMode: 'Light Mode', companyInfoImportant: 'Company Info is Important', companyInfoDesc: 'This information will appear on your invoices and operator screens.', currentPassword: 'Current Password', newPassword: 'New Password', confirmPassword: 'Confirm New Password', accountSecurity: 'Account Security', securityHint: 'It is recommended to change your password regularly.', twoFactor: 'Two-Factor Authentication (2FA)', twoFactorDesc: 'A code will be sent to your phone when signing in.', activate: 'Activate' }, notifications: { emailAlerts: 'Email Notifications', emailAlertsDesc: 'Receive important updates via email.', pushNotifications: 'Push Notifications', pushDesc: 'Instant alerts via browser.', maintenanceAlerts: 'Maintenance Alerts', maintenanceDesc: 'Alert when machine maintenance is due.', weeklyReport: 'Weekly Report', weeklyReportDesc: 'Send weekly summary report every Monday.', marketing: 'Campaigns & Announcements', marketingDesc: 'Stay informed about new features and discounts.' } }
   }
 };
 
@@ -169,7 +109,7 @@ const convertAPIMachineToMachine = (apiMachine: APIMachine): Machine => ({
   type: mapMachineType(apiMachine.machineType),
   serialNumber: apiMachine.serialNumber || '',
   status: mapMachineStatus(apiMachine.status),
-  engineHours: apiMachine.engineHours || 0,
+  engineHours: Number(apiMachine.engineHours) || 0,
   lastService: apiMachine.createdAt?.split('T')[0] || '',
   imageUrl: 'https://images.unsplash.com/photo-1582239634898-3564c768832a?q=80&w=800&auto=format&fit=crop',
   assignedOperatorId: apiMachine.assignedOperatorId || undefined,
@@ -184,11 +124,27 @@ const convertAPIMachineToMachine = (apiMachine: APIMachine): Machine => ({
 });
 
 // Helper function to convert API user to frontend Operator type
+// Specialty translation map (English to Turkish)
+const SPECIALTY_TRANSLATIONS: Record<string, string> = {
+  'crane': 'Vinç',
+  'excavator': 'Ekskavatör',
+  'loader': 'Yükleyici',
+  'dozer': 'Dozer',
+  'truck': 'Kamyon',
+  'forklift': 'Forklift',
+  'grader': 'Greyder',
+};
+
+const translateSpecialty = (specialty: string): string => {
+  const lowerSpecialty = specialty.toLowerCase();
+  return SPECIALTY_TRANSLATIONS[lowerSpecialty] || specialty;
+};
+
 const convertAPIUserToOperator = (apiUser: APIUser): Operator => ({
   id: apiUser.id,
   name: `${apiUser.firstName} ${apiUser.lastName}`,
   licenseType: apiUser.licenses || [],
-  specialty: apiUser.specialties || [],
+  specialty: apiUser.specialties || [], // Keep English values, UI will translate for display
   avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(apiUser.firstName + '+' + apiUser.lastName)}&background=0F2C59&color=fff`,
   phone: apiUser.phone || '',
   email: apiUser.email,
@@ -261,11 +217,11 @@ const App: React.FC = () => {
   const toast = useToast();
 
   // API Data Queries (only run when authenticated)
-  const { data: apiMachines, isLoading: machinesLoading } = useMachines();
-  const { data: apiOperators, isLoading: operatorsLoading } = useOperators();
-  const { data: apiJobs, isLoading: jobsLoading } = useJobs();
-  const { data: apiTemplates, isLoading: templatesLoading } = useChecklistTemplates();
-  const { data: apiSubmissions, isLoading: submissionsLoading } = usePendingSubmissions();
+  const { data: apiMachines, isLoading: machinesLoading } = useMachines(undefined, { enabled: isAuthenticated });
+  const { data: apiOperators, isLoading: operatorsLoading } = useOperators({ enabled: isAuthenticated });
+  const { data: apiJobs, isLoading: jobsLoading } = useJobs(undefined, { enabled: isAuthenticated });
+  const { data: apiTemplates, isLoading: templatesLoading } = useChecklistTemplates({ enabled: isAuthenticated });
+  const { data: apiSubmissions, isLoading: submissionsLoading } = usePendingSubmissions({ enabled: isAuthenticated });
 
   // Mutations
   const reviewSubmissionMutation = useReviewSubmission();
@@ -273,6 +229,7 @@ const App: React.FC = () => {
   const createJobMutation = useCreateJob();
   const updateJobMutation = useUpdateJob();
   const deleteJobMutation = useDeleteJob();
+  const assignJobMutation = useAssignJob();
   // Machine mutations
   const createMachineMutation = useCreateMachine();
   const updateMachineMutation = useUpdateMachine();
@@ -287,39 +244,45 @@ const App: React.FC = () => {
   const deleteTemplateMutation = useDeleteTemplate();
 
   // Convert API data to frontend types, fallback to mock data if API not available
+  // API returns paginated response: { data: [...], meta: {...} }
   const machines: Machine[] = useMemo(() => {
-    if (apiMachines && apiMachines.length > 0) {
-      return apiMachines.map(convertAPIMachineToMachine);
+    const machineData = apiMachines?.data || apiMachines;
+    if (machineData && Array.isArray(machineData) && machineData.length > 0) {
+      return machineData.map(convertAPIMachineToMachine);
     }
     return MOCK_MACHINES;
   }, [apiMachines]);
 
   const operators: Operator[] = useMemo(() => {
-    if (apiOperators && apiOperators.length > 0) {
-      return apiOperators.map(convertAPIUserToOperator);
+    const operatorData = apiOperators?.data || apiOperators;
+    if (operatorData && Array.isArray(operatorData) && operatorData.length > 0) {
+      return operatorData.map(convertAPIUserToOperator);
     }
     return MOCK_OPERATORS;
   }, [apiOperators]);
 
   const jobs: Job[] = useMemo(() => {
-    if (apiJobs && apiJobs.length > 0) {
-      return apiJobs.map(convertAPIJobToJob);
+    const jobData = apiJobs?.data || apiJobs;
+    if (jobData && Array.isArray(jobData) && jobData.length > 0) {
+      return jobData.map(convertAPIJobToJob);
     }
     return MOCK_JOBS;
   }, [apiJobs]);
 
   const checklistTemplates: ChecklistTemplate[] = useMemo(() => {
-    if (apiTemplates && apiTemplates.length > 0) {
-      return apiTemplates.map(convertAPITemplateToTemplate);
+    const templateData = apiTemplates?.data || apiTemplates;
+    if (templateData && Array.isArray(templateData) && templateData.length > 0) {
+      return templateData.map(convertAPITemplateToTemplate);
     }
     return MOCK_TEMPLATES;
   }, [apiTemplates]);
 
   const checklists: ChecklistItem[] = useMemo(() => {
-    if (apiSubmissions && apiSubmissions.length > 0) {
-      return apiSubmissions.map(convertAPISubmissionToChecklist);
+    const submissionData = apiSubmissions?.data || apiSubmissions;
+    if (submissionData && Array.isArray(submissionData)) {
+      return submissionData.map(convertAPISubmissionToChecklist);
     }
-    return MOCK_CHECKLISTS;
+    return [];
   }, [apiSubmissions]);
 
   // Mobile Simulator State
@@ -422,14 +385,31 @@ const App: React.FC = () => {
   };
 
   const updateMachine = (updatedMachine: Machine) => {
+    // Prepare update data - only include assignedOperatorId and checklistTemplateId if they have valid values or explicitly null
+    const updateData: any = {
+      name: updatedMachine.name,
+      brand: updatedMachine.brand,
+      model: updatedMachine.model,
+      engineHours: updatedMachine.engineHours,
+    };
+
+    // Handle assignedOperatorId - send null to clear, valid UUID to set, or undefined to not change
+    if (updatedMachine.assignedOperatorId === '' || updatedMachine.assignedOperatorId === undefined) {
+      updateData.assignedOperatorId = null;
+    } else {
+      updateData.assignedOperatorId = updatedMachine.assignedOperatorId;
+    }
+
+    // Handle checklistTemplateId - send null to clear, valid UUID to set, or undefined to not change
+    if (updatedMachine.assignedChecklistId === '' || updatedMachine.assignedChecklistId === undefined) {
+      updateData.checklistTemplateId = null;
+    } else {
+      updateData.checklistTemplateId = updatedMachine.assignedChecklistId;
+    }
+
     updateMachineMutation.mutate({
       id: updatedMachine.id,
-      data: {
-        name: updatedMachine.name,
-        brand: updatedMachine.brand,
-        model: updatedMachine.model,
-        engineHours: updatedMachine.engineHours,
-      }
+      data: updateData
     }, {
       onSuccess: () => toast.success('Makine başarıyla güncellendi'),
       onError: () => toast.error('Makine güncellenirken hata oluştu'),
@@ -501,10 +481,24 @@ const App: React.FC = () => {
       locationLng: job.coordinates?.lng,
       locationAddress: job.location,
       priority: job.priority,
-      scheduledStart: job.startDate,
-      scheduledEnd: job.endDate,
+      scheduledStart: job.startDate ? new Date(job.startDate).toISOString() : undefined,
+      scheduledEnd: job.endDate ? new Date(job.endDate).toISOString() : undefined,
     }, {
-      onSuccess: () => toast.success('İş başarıyla eklendi'),
+      onSuccess: (createdJob) => {
+        // If machines were selected, assign them to the job
+        if (job.assignedMachineIds && job.assignedMachineIds.length > 0) {
+          assignJobMutation.mutate({
+            jobId: createdJob.id,
+            machineIds: job.assignedMachineIds,
+            operatorIds: [],
+          }, {
+            onSuccess: () => toast.success('İş başarıyla eklendi ve makineler atandı'),
+            onError: () => toast.error('İş eklendi fakat makine ataması başarısız oldu'),
+          });
+        } else {
+          toast.success('İş başarıyla eklendi');
+        }
+      },
       onError: () => toast.error('İş eklenirken hata oluştu'),
     });
   };
@@ -520,13 +514,27 @@ const App: React.FC = () => {
         locationLng: updatedJob.coordinates?.lng,
         locationAddress: updatedJob.location,
         priority: updatedJob.priority,
-        scheduledStart: updatedJob.startDate,
-        scheduledEnd: updatedJob.endDate,
+        scheduledStart: updatedJob.startDate ? new Date(updatedJob.startDate).toISOString() : undefined,
+        scheduledEnd: updatedJob.endDate ? new Date(updatedJob.endDate).toISOString() : undefined,
         progress: updatedJob.progress,
         status: mapFrontendStatusToAPI(updatedJob.status),
       }
     }, {
-      onSuccess: () => toast.success('İş başarıyla güncellendi'),
+      onSuccess: () => {
+        // Update machine assignments if provided
+        if (updatedJob.assignedMachineIds !== undefined) {
+          assignJobMutation.mutate({
+            jobId: updatedJob.id,
+            machineIds: updatedJob.assignedMachineIds,
+            operatorIds: [],
+          }, {
+            onSuccess: () => toast.success('İş başarıyla güncellendi'),
+            onError: () => toast.error('İş güncellendi fakat makine ataması başarısız oldu'),
+          });
+        } else {
+          toast.success('İş başarıyla güncellendi');
+        }
+      },
       onError: () => toast.error('İş güncellenirken hata oluştu'),
     });
   };
@@ -542,11 +550,11 @@ const App: React.FC = () => {
   const addChecklistTemplate = (template: ChecklistTemplate) => {
     createTemplateMutation.mutate({
       name: template.name,
+      machineTypes: [], // All machine types by default
       items: template.items.map((item, index) => ({
         label: item,
-        type: 'checkbox' as const,
+        type: 'boolean' as const,
         required: true,
-        order: index,
       })),
     }, {
       onSuccess: () => toast.success('Şablon başarıyla eklendi'),
@@ -561,9 +569,8 @@ const App: React.FC = () => {
         name: updatedTemplate.name,
         items: updatedTemplate.items.map((item, index) => ({
           label: item,
-          type: 'checkbox' as const,
+          type: 'boolean' as const,
           required: true,
-          order: index,
         })),
       }
     }, {
@@ -625,7 +632,7 @@ const App: React.FC = () => {
       case 'checklists':
         return <ChecklistManagement templates={checklistTemplates} addTemplate={addChecklistTemplate} updateTemplate={updateChecklistTemplate} deleteTemplate={deleteChecklistTemplate} t={t.checklists} />;
       case 'approvals':
-        return <ApprovalWorkflow checklists={checklists} handleApproval={handleApproval} t={t.approvals} />;
+        return <ApprovalWorkflow checklists={checklists} machines={machines} handleApproval={handleApproval} t={t.approvals} />;
       case 'finance':
         return <FinanceModule invoices={invoices} machines={machines} firmDetails={firmDetails} t={t.finance} />;
       case 'settings':

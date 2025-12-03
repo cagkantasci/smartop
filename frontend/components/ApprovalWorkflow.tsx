@@ -1,17 +1,35 @@
 
 import React, { useState } from 'react';
 import { Check, X, AlertOctagon, User, Clock, FileText, Eye, Camera, CheckCircle } from 'lucide-react';
-import { ChecklistItem, ChecklistStatus, TranslationDictionary } from '../types';
+import { ChecklistItem, ChecklistStatus, TranslationDictionary, Machine } from '../types';
+
+// Default translations for when t prop is not provided
+const DEFAULT_TRANSLATIONS = {
+  title: 'Onay Kuyruğu',
+  subtitle: 'Operatörlerden gelen günlük kontrol formlarını inceleyin.',
+  empty: 'Her Şey Güncel!',
+  approve: 'Onayla',
+  reject: 'Reddet',
+  review: 'İncele',
+  queue: 'Ön Kontrol'
+};
 
 interface ApprovalWorkflowProps {
   checklists: ChecklistItem[];
+  machines?: Machine[];
   handleApproval: (id: string, approved: boolean) => void;
-  t: TranslationDictionary['approvals'];
+  t?: TranslationDictionary['approvals'];
 }
 
-export const ApprovalWorkflow: React.FC<ApprovalWorkflowProps> = ({ checklists, handleApproval, t }) => {
+export const ApprovalWorkflow: React.FC<ApprovalWorkflowProps> = ({ checklists, machines = [], handleApproval, t = DEFAULT_TRANSLATIONS }) => {
   const [selectedChecklist, setSelectedChecklist] = useState<ChecklistItem | null>(null);
   const pendingItems = checklists.filter(c => c.status === ChecklistStatus.Pending);
+
+  // Helper function to get machine name from ID
+  const getMachineName = (machineId: string): string => {
+    const machine = machines.find(m => m.id === machineId);
+    return machine ? machine.name : machineId;
+  };
 
   const openDetails = (item: ChecklistItem) => {
       setSelectedChecklist(item);
@@ -59,7 +77,7 @@ export const ApprovalWorkflow: React.FC<ApprovalWorkflowProps> = ({ checklists, 
                 
                 <div className="flex justify-between items-start mb-4">
                    <div>
-                     <h3 className="text-lg font-bold text-smart-navy dark:text-white mb-1">Makine ID: {item.machineId}</h3>
+                     <h3 className="text-lg font-bold text-smart-navy dark:text-white mb-1">{getMachineName(item.machineId)}</h3>
                      <div className="flex items-center gap-2 text-gray-600 dark:text-gray-300 text-sm font-medium">
                        <User size={14} />
                        {item.operatorName}
@@ -138,7 +156,7 @@ export const ApprovalWorkflow: React.FC<ApprovalWorkflowProps> = ({ checklists, 
                   <div className="p-6 overflow-y-auto flex-1 bg-gray-50 dark:bg-slate-900">
                       <div className="mb-6 bg-white dark:bg-slate-800 p-4 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm">
                           <p className="text-xs text-gray-500 dark:text-gray-400 uppercase font-bold mb-1">Makine</p>
-                          <p className="text-lg font-bold text-smart-navy dark:text-white">{selectedChecklist.machineId}</p>
+                          <p className="text-lg font-bold text-smart-navy dark:text-white">{getMachineName(selectedChecklist.machineId)}</p>
                       </div>
 
                       <h4 className="font-bold text-smart-navy dark:text-white mb-4 flex items-center gap-2">

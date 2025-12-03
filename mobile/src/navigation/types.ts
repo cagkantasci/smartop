@@ -23,6 +23,11 @@ export type MachinesStackParamList = {
   MachineDetail: { machineId: string };
 };
 
+export type ChecklistStackParamList = {
+  ChecklistMain: undefined;
+  ChecklistTemplates: undefined;
+};
+
 // Root Stack (combines Auth and Main)
 export type RootStackParamList = {
   Auth: NavigatorScreenParams<AuthStackParamList>;

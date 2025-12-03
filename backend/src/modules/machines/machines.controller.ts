@@ -74,6 +74,7 @@ export class MachinesController {
     @Body() dto: UpdateMachineDto,
     @CurrentUser('organizationId') organizationId: string,
   ) {
+    console.log('DEBUG: Machine update request', { id, dto, organizationId });
     return this.machinesService.update(id, dto, organizationId);
   }
 

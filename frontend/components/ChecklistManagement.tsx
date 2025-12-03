@@ -166,7 +166,7 @@ export const ChecklistManagement: React.FC<ChecklistManagementProps> = ({ templa
                         value={newTemplateName}
                         onChange={(e) => setNewTemplateName(e.target.value)}
                         className="w-full px-4 py-3 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-smart-navy/20 outline-none bg-white text-gray-900 dark:bg-slate-700 dark:text-white"
-                        placeholder="Örn: Ekskavatör Günlük Bakım"
+                        placeholder={t.modal.namePlaceholder}
                     />
                 </div>
 
@@ -179,7 +179,7 @@ export const ChecklistManagement: React.FC<ChecklistManagementProps> = ({ templa
                             onChange={(e) => setCurrentItemInput(e.target.value)}
                             onKeyDown={(e) => e.key === 'Enter' && handleAddItem()}
                             className="flex-1 px-4 py-3 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-smart-navy/20 outline-none bg-white text-gray-900 dark:bg-slate-700 dark:text-white"
-                            placeholder="Örn: Motor Yağı Kontrolü"
+                            placeholder={t.modal.itemPlaceholder}
                         />
                         <button 
                             onClick={handleAddItem}
@@ -193,8 +193,17 @@ export const ChecklistManagement: React.FC<ChecklistManagementProps> = ({ templa
                         {newItems.map((item, idx) => (
                             <div key={idx} className="flex items-center gap-3 p-3 bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg group hover:border-blue-300 dark:hover:border-blue-500 transition-colors">
                                 <GripVertical size={16} className="text-gray-300 dark:text-gray-500 cursor-move" />
-                                <span className="flex-1 text-sm font-medium text-gray-700 dark:text-gray-200">{item}</span>
-                                <button 
+                                <input
+                                    type="text"
+                                    value={item}
+                                    onChange={(e) => {
+                                        const updatedItems = [...newItems];
+                                        updatedItems[idx] = e.target.value;
+                                        setNewItems(updatedItems);
+                                    }}
+                                    className="flex-1 text-sm font-medium text-gray-700 dark:text-gray-200 bg-transparent border-none focus:outline-none focus:ring-0"
+                                />
+                                <button
                                     onClick={() => handleDeleteItem(idx)}
                                     className="text-gray-300 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 transition-colors"
                                 >
@@ -207,11 +216,11 @@ export const ChecklistManagement: React.FC<ChecklistManagementProps> = ({ templa
             </div>
 
             <div className="p-6 border-t border-gray-100 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 rounded-b-2xl flex justify-end gap-3">
-                 <button 
+                 <button
                     onClick={handleClose}
                     className="px-6 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-slate-700 rounded-lg font-medium transition-colors"
                 >
-                    İptal
+                    {t.modal.cancel}
                 </button>
                 <button 
                     onClick={handleSaveTemplate}

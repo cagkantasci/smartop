@@ -261,7 +261,12 @@ export class JobsService {
       }
     }
 
-    // Create assignments
+    // Delete existing machine assignments and create new ones (replace strategy)
+    await this.prisma.jobAssignment.deleteMany({
+      where: { jobId: id },
+    });
+
+    // Create new assignments
     const assignments = [];
 
     for (const machineId of machineIds || []) {
@@ -278,10 +283,11 @@ export class JobsService {
       });
     }
 
-    await this.prisma.jobAssignment.createMany({
-      data: assignments,
-      skipDuplicates: true,
-    });
+    if (assignments.length > 0) {
+      await this.prisma.jobAssignment.createMany({
+        data: assignments,
+      });
+    }
 
     return this.findOne(id, organizationId);
   }

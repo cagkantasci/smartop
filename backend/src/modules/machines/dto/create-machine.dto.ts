@@ -7,7 +7,7 @@ import {
   Min,
   Max,
   IsNumber,
-  IsUUID,
+  Matches,
 } from 'class-validator';
 
 export class CreateMachineDto {
@@ -70,10 +70,14 @@ export class CreateMachineDto {
   notes?: string;
 
   @IsOptional()
-  @IsUUID()
+  @Matches(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i, {
+    message: 'assignedOperatorId must be a valid UUID format',
+  })
   assignedOperatorId?: string;
 
   @IsOptional()
-  @IsUUID()
+  @Matches(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i, {
+    message: 'checklistTemplateId must be a valid UUID format',
+  })
   checklistTemplateId?: string;
 }

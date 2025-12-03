@@ -68,14 +68,41 @@ export function ApprovalsScreen() {
     try {
       const response = await checklistsApi.getSubmissions();
       // Handle different response formats safely
-      let submissionsArray: ChecklistSubmission[] = [];
+      let rawSubmissions: any[] = [];
       if (Array.isArray(response)) {
-        submissionsArray = response;
+        rawSubmissions = response;
       } else if (response && Array.isArray(response.submissions)) {
-        submissionsArray = response.submissions;
+        rawSubmissions = response.submissions;
       } else if (response && Array.isArray(response.data)) {
-        submissionsArray = response.data;
+        rawSubmissions = response.data;
       }
+
+      // Transform backend format to mobile format
+      const submissionsArray: ChecklistSubmission[] = rawSubmissions.map((item: any) => ({
+        id: item.id,
+        machineId: item.machineId,
+        machineName: item.machine?.name || item.machineName || 'Bilinmeyen Makine',
+        templateId: item.templateId,
+        templateName: item.template?.name || item.templateName || 'Bilinmeyen Şablon',
+        operatorId: item.operatorId,
+        operatorName: item.operator
+          ? `${item.operator.firstName} ${item.operator.lastName}`
+          : item.operatorName || 'Bilinmeyen Operatör',
+        status: item.status,
+        entries: (item.entries || []).map((entry: any) => ({
+          itemId: entry.itemId,
+          label: entry.label || '',
+          isOk: entry.isOk,
+          value: entry.value,
+          photoUrl: entry.photoUrl,
+        })),
+        issuesCount: item.issuesCount || 0,
+        notes: item.notes,
+        submittedAt: item.submittedAt,
+        reviewedAt: item.reviewedAt,
+        reviewerNotes: item.reviewerNotes,
+      }));
+
       setSubmissions(submissionsArray);
     } catch (error) {
       console.error('Failed to fetch submissions:', error);

@@ -9,11 +9,13 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import { Header, Button, Card, Input } from '../../components/ui';
 import { checklistsApi, machinesApi } from '../../services/api';
 import { Machine, ChecklistTemplate, ChecklistItem } from '../../types';
 import { useTheme } from '../../context/ThemeContext';
 import { useLanguage, interpolate } from '../../context/LanguageContext';
+import { useAuth } from '../../context/AuthContext';
 
 interface ChecklistItemState extends ChecklistItem {
   checked: boolean;
@@ -22,9 +24,13 @@ interface ChecklistItemState extends ChecklistItem {
 }
 
 export function ChecklistScreen() {
+  const navigation = useNavigation<any>();
   const { theme } = useTheme();
   const { t } = useLanguage();
+  const { user } = useAuth();
   const colors = theme.colors;
+
+  const canManageTemplates = user?.role === 'admin' || user?.role === 'manager';
 
   const [step, setStep] = useState<'select' | 'fill' | 'complete'>('select');
   const [machines, setMachines] = useState<Machine[]>([]);
@@ -138,15 +144,25 @@ export function ChecklistScreen() {
 
     setIsSubmitting(true);
     try {
-      await checklistsApi.submit({
+      // Convert mobile format to backend expected format
+      const entries = items.map((item) => ({
+        itemId: item.id,
+        label: item.label,
+        isOk: item.checked && !item.hasIssue, // isOk = checked and no issue
+        value: item.hasIssue ? item.notes : undefined,
+      }));
+
+      // Combine notes from issues
+      const issueNotes = items
+        .filter((item) => item.hasIssue && item.notes)
+        .map((item) => `${item.label}: ${item.notes}`)
+        .join('\n');
+
+      await checklistsApi.submitChecklist({
         machineId: selectedMachine.id,
         templateId: template.id,
-        items: items.map((item) => ({
-          itemId: item.id,
-          checked: item.checked,
-          notes: item.notes,
-          hasIssue: item.hasIssue,
-        })),
+        entries,
+        notes: issueNotes || undefined,
       });
 
       setStep('complete');
@@ -169,7 +185,12 @@ export function ChecklistScreen() {
   if (step === 'select') {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
-        <Header title={t.checklist.title} subtitle={t.checklist.subtitle} />
+        <Header
+          title={t.checklist.title}
+          subtitle={t.checklist.subtitle}
+          rightIcon={canManageTemplates ? 'settings-outline' : undefined}
+          onRightPress={canManageTemplates ? () => navigation.navigate('ChecklistTemplates') : undefined}
+        />
 
         <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
           <Text style={[styles.instruction, { color: colors.textSecondary }]}>
