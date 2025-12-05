@@ -148,10 +148,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
       <nav className="fixed top-0 w-full z-50 bg-slate-900/80 backdrop-blur-md border-b border-white/10">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-10 h-10 bg-smart-yellow rounded-lg flex items-center justify-center">
-              <Activity className="text-smart-navy w-6 h-6" />
-            </div>
-            <span className="text-xl font-bold tracking-tight">Smartop</span>
+            <img src="/smartop-white.png" alt="Smartop" className="h-10 w-auto" />
           </div>
           <div className="hidden md:flex gap-8 text-sm font-medium text-gray-300">
             <a href="#features" className="hover:text-white transition-colors">Özellikler</a>
@@ -341,8 +338,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
       <footer className="py-12 border-t border-white/10 bg-slate-900 text-gray-500 text-sm">
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="flex items-center gap-2">
-            <Activity className="text-smart-yellow w-5 h-5" />
-            <span className="font-bold text-white">Smartop</span>
+            <img src="/smartop-white.png" alt="Smartop" className="h-5 w-auto" />
           </div>
           <div className="flex gap-6">
             <a href="#" className="hover:text-white">Gizlilik Politikası</a>
@@ -372,9 +368,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
             >
               <div className="flex justify-between items-center mb-6">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-smart-yellow rounded-lg flex items-center justify-center">
-                    <Activity className="text-smart-navy w-6 h-6" />
-                  </div>
+                  <img src="/smartop-white.png" alt="Smartop" className="h-10 w-auto" />
                   <h2 className="text-2xl font-bold text-white">
                     {authMode === 'login' && 'Portal Girişi'}
                     {authMode === 'register' && 'Kayıt Ol'}
@@ -716,3 +710,5 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
     </div>
   );
 };
+
+
