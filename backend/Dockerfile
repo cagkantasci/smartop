@@ -31,6 +31,10 @@ COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/package*.json ./
 
+# Create entrypoint script for migrations
+COPY --chown=nestjs:nodejs docker-entrypoint.sh /app/docker-entrypoint.sh
+RUN chmod +x /app/docker-entrypoint.sh
+
 # Set ownership
 RUN chown -R nestjs:nodejs /app
 
@@ -38,4 +42,5 @@ USER nestjs
 
 EXPOSE 3000
 
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
 CMD ["node", "dist/main"]
