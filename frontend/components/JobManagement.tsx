@@ -1,10 +1,10 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, MapPin, Calendar, CheckCircle, AlertTriangle, Clock, X, Building2, Truck, User, Eye, Edit2, Trash2, Map, Navigation, Target, ChevronRight, Loader2, Search, Filter, SlidersHorizontal } from 'lucide-react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Job, Machine, Operator, TranslationDictionary } from '../types';
+import { Job, Machine, Operator, TranslationDictionary, MachineStatus } from '../types';
 
 // Fix for default marker icons in Leaflet with webpack/vite
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -50,6 +50,8 @@ interface JobManagementProps {
   updateJob?: (job: Job) => void;
   deleteJob?: (id: string) => void;
   t: TranslationDictionary['jobs'];
+  userRole?: 'admin' | 'manager' | 'operator';
+  currentUserId?: string;
 }
 
 // Map center adjuster component
@@ -61,6 +63,37 @@ const MapController: React.FC<{ center: [number, number]; zoom: number }> = ({ c
   return null;
 };
 
+// Clickable map component for coordinate selection
+interface ClickableMapProps {
+  onLocationSelect: (lat: number, lng: number) => void;
+  selectedCoordinates: { lat: number; lng: number };
+}
+
+const ClickableMapMarker: React.FC<ClickableMapProps> = ({ onLocationSelect, selectedCoordinates }) => {
+  useMapEvents({
+    click: (e) => {
+      onLocationSelect(e.latlng.lat, e.latlng.lng);
+    },
+  });
+
+  // Ensure coordinates are numbers (they might come as strings from the database)
+  const lat = Number(selectedCoordinates.lat);
+  const lng = Number(selectedCoordinates.lng);
+
+  return (
+    <Marker position={[lat, lng]} icon={jobIcon}>
+      <Popup>
+        <div className="text-center">
+          <p className="font-bold text-smart-navy">Seçilen Konum</p>
+          <p className="text-xs text-gray-500">
+            {lat.toFixed(4)}, {lng.toFixed(4)}
+          </p>
+        </div>
+      </Popup>
+    </Marker>
+  );
+};
+
 export const JobManagement: React.FC<JobManagementProps> = ({
   jobs,
   machines,
@@ -68,8 +101,14 @@ export const JobManagement: React.FC<JobManagementProps> = ({
   addJob,
   updateJob,
   deleteJob,
-  t
+  t,
+  userRole,
+  currentUserId
 }) => {
+  // Role-based permissions - if no role specified, allow all actions (backwards compatibility)
+  const canEdit = !userRole || userRole === 'admin' || userRole === 'manager';
+  const canDelete = !userRole || userRole === 'admin' || userRole === 'manager';
+  const canAdd = !userRole || userRole === 'admin' || userRole === 'manager';
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
@@ -106,9 +145,20 @@ export const JobManagement: React.FC<JobManagementProps> = ({
   const jobsWithCoords = jobs.filter(j => j.coordinates?.lat && j.coordinates?.lng);
   const machinesWithCoords = machines.filter(m => m.location?.lat && m.location?.lng);
 
+  // Filter jobs by role - operators only see their assigned jobs
+  const roleFilteredJobs = useMemo(() => {
+    if (userRole === 'operator' && currentUserId) {
+      // Operator.id equals User.id in this system, so we can use currentUserId directly
+      return jobs.filter(job =>
+        job.assignedOperatorIds?.includes(currentUserId)
+      );
+    }
+    return jobs; // Admin and Manager see all jobs
+  }, [jobs, userRole, currentUserId]);
+
   // Filtered jobs
   const filteredJobs = useMemo(() => {
-    return jobs.filter(job => {
+    return roleFilteredJobs.filter(job => {
       // Search filter
       const matchesSearch = searchTerm === '' ||
         job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -123,16 +173,16 @@ export const JobManagement: React.FC<JobManagementProps> = ({
 
       return matchesSearch && matchesStatus && matchesPriority;
     });
-  }, [jobs, searchTerm, statusFilter, priorityFilter]);
+  }, [roleFilteredJobs, searchTerm, statusFilter, priorityFilter]);
 
-  // Stats for filter badges
+  // Stats for filter badges - based on role-filtered jobs
   const jobStats = useMemo(() => ({
-    total: jobs.length,
-    inProgress: jobs.filter(j => j.status === 'In Progress').length,
-    scheduled: jobs.filter(j => j.status === 'Scheduled').length,
-    delayed: jobs.filter(j => j.status === 'Delayed').length,
-    completed: jobs.filter(j => j.status === 'Completed').length,
-  }), [jobs]);
+    total: roleFilteredJobs.length,
+    inProgress: roleFilteredJobs.filter(j => j.status === 'In Progress').length,
+    scheduled: roleFilteredJobs.filter(j => j.status === 'Scheduled').length,
+    delayed: roleFilteredJobs.filter(j => j.status === 'Delayed').length,
+    completed: roleFilteredJobs.filter(j => j.status === 'Completed').length,
+  }), [roleFilteredJobs]);
 
   const handleMachineToggle = (machineId: string) => {
     setFormData(prev => {
@@ -206,7 +256,8 @@ export const JobManagement: React.FC<JobManagementProps> = ({
     setSelectedJob(job);
     setIsDetailModalOpen(true);
     if (job.coordinates) {
-      setMapCenter([job.coordinates.lat, job.coordinates.lng]);
+      // Ensure coordinates are numbers (they might come as strings from the database)
+      setMapCenter([Number(job.coordinates.lat), Number(job.coordinates.lng)]);
       setMapZoom(14);
     }
   };
@@ -214,6 +265,10 @@ export const JobManagement: React.FC<JobManagementProps> = ({
   // Open edit modal with job data
   const openEditModal = (job: Job) => {
     setSelectedJob(job);
+    // Ensure coordinates are numbers (they might come as strings from the database)
+    const coords = job.coordinates
+      ? { lat: Number(job.coordinates.lat), lng: Number(job.coordinates.lng) }
+      : { lat: 41.0082, lng: 28.9784 };
     setFormData({
       title: job.title,
       description: job.description || '',
@@ -225,7 +280,7 @@ export const JobManagement: React.FC<JobManagementProps> = ({
       progress: job.progress,
       assignedMachineIds: job.assignedMachineIds,
       assignedOperatorIds: job.assignedOperatorIds || [],
-      coordinates: job.coordinates || { lat: 41.0082, lng: 28.9784 }
+      coordinates: coords
     });
     setIsEditModalOpen(true);
   };
@@ -297,7 +352,7 @@ export const JobManagement: React.FC<JobManagementProps> = ({
       case 'In Progress': return t.status.inProgress;
       case 'Completed': return t.status.completed;
       case 'Delayed': return t.status.delayed;
-      case 'Scheduled': return 'Planlandı';
+      case 'Scheduled': return t.status.scheduled;
       default: return status;
     }
   };
@@ -314,10 +369,10 @@ export const JobManagement: React.FC<JobManagementProps> = ({
 
   const getPriorityLabel = (priority: string) => {
     switch(priority) {
-      case 'urgent': return 'Acil';
-      case 'high': return 'Yüksek';
-      case 'medium': return 'Orta';
-      case 'low': return 'Düşük';
+      case 'urgent': return t.priority.high;
+      case 'high': return t.priority.high;
+      case 'medium': return t.priority.medium;
+      case 'low': return t.priority.low;
       default: return priority;
     }
   };
@@ -343,15 +398,17 @@ export const JobManagement: React.FC<JobManagementProps> = ({
             }`}
           >
             <Map size={20} />
-            {showMap ? 'Listeye Dön' : 'Harita Görünümü'}
+            {showMap ? t.listView : t.mapView}
           </button>
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="bg-smart-navy dark:bg-black text-white px-6 py-3 rounded-lg font-bold hover:bg-blue-900 dark:hover:bg-gray-800 transition-colors flex items-center gap-2 shadow-md border border-transparent dark:border-gray-700"
-          >
-            <Plus size={20} strokeWidth={3} />
-            {t.addJob}
-          </button>
+          {canAdd && (
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="bg-smart-navy dark:bg-black text-white px-6 py-3 rounded-lg font-bold hover:bg-blue-900 dark:hover:bg-gray-800 transition-colors flex items-center gap-2 shadow-md border border-transparent dark:border-gray-700"
+            >
+              <Plus size={20} strokeWidth={3} />
+              {t.addJob}
+            </button>
+          )}
         </div>
       </div>
 
@@ -363,7 +420,7 @@ export const JobManagement: React.FC<JobManagementProps> = ({
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
               type="text"
-              placeholder="İş adı, konum veya açıklama ara..."
+              placeholder={t.searchPlaceholder}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-smart-navy/20 dark:focus:ring-gray-500/20"
@@ -387,7 +444,7 @@ export const JobManagement: React.FC<JobManagementProps> = ({
             }`}
           >
             <SlidersHorizontal size={18} />
-            Filtreler
+            {t.filters}
             {(statusFilter !== 'all' || priorityFilter !== 'all') && (
               <span className="w-5 h-5 rounded-full bg-smart-yellow text-smart-navy text-xs font-bold flex items-center justify-center">
                 {(statusFilter !== 'all' ? 1 : 0) + (priorityFilter !== 'all' ? 1 : 0)}
@@ -402,7 +459,7 @@ export const JobManagement: React.FC<JobManagementProps> = ({
             <div className="flex flex-wrap gap-6">
               {/* Status Filter */}
               <div>
-                <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-2">Durum</label>
+                <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-2">{t.filterLabels.status}</label>
                 <div className="flex flex-wrap gap-2">
                   <button
                     onClick={() => setStatusFilter('all')}
@@ -412,7 +469,7 @@ export const JobManagement: React.FC<JobManagementProps> = ({
                         : 'bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-slate-600'
                     }`}
                   >
-                    Tümü ({jobStats.total})
+                    {t.filterLabels.all} ({jobStats.total})
                   </button>
                   <button
                     onClick={() => setStatusFilter('In Progress')}
@@ -422,7 +479,7 @@ export const JobManagement: React.FC<JobManagementProps> = ({
                         : 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50'
                     }`}
                   >
-                    Devam Ediyor ({jobStats.inProgress})
+                    {t.status.inProgress} ({jobStats.inProgress})
                   </button>
                   <button
                     onClick={() => setStatusFilter('Scheduled')}
@@ -432,7 +489,7 @@ export const JobManagement: React.FC<JobManagementProps> = ({
                         : 'bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/50'
                     }`}
                   >
-                    Planlandı ({jobStats.scheduled})
+                    {t.status.scheduled} ({jobStats.scheduled})
                   </button>
                   <button
                     onClick={() => setStatusFilter('Delayed')}
@@ -442,7 +499,7 @@ export const JobManagement: React.FC<JobManagementProps> = ({
                         : 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/50'
                     }`}
                   >
-                    Gecikmede ({jobStats.delayed})
+                    {t.status.delayed} ({jobStats.delayed})
                   </button>
                   <button
                     onClick={() => setStatusFilter('Completed')}
@@ -452,14 +509,14 @@ export const JobManagement: React.FC<JobManagementProps> = ({
                         : 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 hover:bg-green-100 dark:hover:bg-green-900/50'
                     }`}
                   >
-                    Tamamlandı ({jobStats.completed})
+                    {t.status.completed} ({jobStats.completed})
                   </button>
                 </div>
               </div>
 
               {/* Priority Filter */}
               <div>
-                <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-2">Öncelik</label>
+                <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-2">{t.filterLabels.priority}</label>
                 <div className="flex flex-wrap gap-2">
                   <button
                     onClick={() => setPriorityFilter('all')}
@@ -469,7 +526,7 @@ export const JobManagement: React.FC<JobManagementProps> = ({
                         : 'bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-slate-600'
                     }`}
                   >
-                    Tümü
+                    {t.filterLabels.all}
                   </button>
                   <button
                     onClick={() => setPriorityFilter('urgent')}
@@ -479,7 +536,7 @@ export const JobManagement: React.FC<JobManagementProps> = ({
                         : 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 hover:bg-red-100'
                     }`}
                   >
-                    Acil
+                    {t.priority.urgent}
                   </button>
                   <button
                     onClick={() => setPriorityFilter('high')}
@@ -489,7 +546,7 @@ export const JobManagement: React.FC<JobManagementProps> = ({
                         : 'bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 hover:bg-orange-100'
                     }`}
                   >
-                    Yüksek
+                    {t.priority.high}
                   </button>
                   <button
                     onClick={() => setPriorityFilter('medium')}
@@ -499,7 +556,7 @@ export const JobManagement: React.FC<JobManagementProps> = ({
                         : 'bg-yellow-50 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 hover:bg-yellow-100'
                     }`}
                   >
-                    Orta
+                    {t.priority.medium}
                   </button>
                   <button
                     onClick={() => setPriorityFilter('low')}
@@ -509,7 +566,7 @@ export const JobManagement: React.FC<JobManagementProps> = ({
                         : 'bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200'
                     }`}
                   >
-                    Düşük
+                    {t.priority.low}
                   </button>
                 </div>
               </div>
@@ -525,7 +582,7 @@ export const JobManagement: React.FC<JobManagementProps> = ({
                     }}
                     className="px-3 py-1.5 rounded-lg text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
                   >
-                    Filtreleri Temizle
+                    {t.clearFilters}
                   </button>
                 </div>
               )}
@@ -536,8 +593,8 @@ export const JobManagement: React.FC<JobManagementProps> = ({
         {/* Results Count */}
         {(searchTerm || statusFilter !== 'all' || priorityFilter !== 'all') && (
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            <span className="font-bold text-smart-navy dark:text-white">{filteredJobs.length}</span> sonuç bulundu
-            {searchTerm && <span> - "{searchTerm}" araması için</span>}
+            <span className="font-bold text-smart-navy dark:text-white">{filteredJobs.length}</span> {t.resultsFound}
+            {searchTerm && <span> - "{searchTerm}" {t.searchFor}</span>}
           </p>
         )}
       </div>
@@ -549,17 +606,17 @@ export const JobManagement: React.FC<JobManagementProps> = ({
             <div>
               <h3 className="text-lg font-bold text-smart-navy dark:text-white flex items-center gap-2">
                 <Navigation size={20} className="text-smart-yellow" />
-                İş ve Makine Konumları
+                {t.jobAndMachineLocations}
               </h3>
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                 <span className="inline-flex items-center gap-1 mr-4">
-                  <span className="w-3 h-3 rounded-full bg-blue-500"></span> İşler ({jobsWithCoords.length})
+                  <span className="w-3 h-3 rounded-full bg-blue-500"></span> {t.jobs} ({jobsWithCoords.length})
                 </span>
                 <span className="inline-flex items-center gap-1 mr-4">
-                  <span className="w-3 h-3 rounded-full bg-green-500"></span> Aktif Makineler
+                  <span className="w-3 h-3 rounded-full bg-green-500"></span> {t.status.inProgress}
                 </span>
                 <span className="inline-flex items-center gap-1">
-                  <span className="w-3 h-3 rounded-full bg-yellow-500"></span> Boşta Makineler
+                  <span className="w-3 h-3 rounded-full bg-yellow-500"></span> {t.idleMachines}
                 </span>
               </p>
             </div>
@@ -598,7 +655,7 @@ export const JobManagement: React.FC<JobManagementProps> = ({
                         onClick={() => openDetailModal(job)}
                         className="mt-2 text-blue-600 text-sm hover:underline"
                       >
-                        Detayları Gör
+                        {t.detailsView}
                       </button>
                     </div>
                   </Popup>
@@ -607,7 +664,7 @@ export const JobManagement: React.FC<JobManagementProps> = ({
 
               {/* Machine Markers */}
               {machinesWithCoords.map(machine => {
-                const isActive = machine.status === 'Aktif';
+                const isActive = machine.status === MachineStatus.Active;
                 return (
                   <Marker
                     key={`machine-${machine.id}`}
@@ -627,7 +684,7 @@ export const JobManagement: React.FC<JobManagementProps> = ({
                           </span>
                         </div>
                         <p className="text-xs text-gray-500 mt-1">
-                          Motor Saati: {machine.engineHours}
+                          {t.engineHour}: {machine.engineHours}
                         </p>
                       </div>
                     </Popup>
@@ -647,9 +704,9 @@ export const JobManagement: React.FC<JobManagementProps> = ({
               <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 dark:bg-slate-700 mb-4">
                 <Search size={32} className="text-gray-400 dark:text-gray-500" />
               </div>
-              <h3 className="text-lg font-bold text-gray-600 dark:text-gray-300 mb-2">Sonuç Bulunamadı</h3>
+              <h3 className="text-lg font-bold text-gray-600 dark:text-gray-300 mb-2">{t.noResults}</h3>
               <p className="text-gray-500 dark:text-gray-400 text-sm">
-                Arama kriterlerinize uygun iş bulunamadı. Filtreleri temizlemeyi deneyin.
+                {t.noJobsFound}
               </p>
               {(searchTerm || statusFilter !== 'all' || priorityFilter !== 'all') && (
                 <button
@@ -660,7 +717,7 @@ export const JobManagement: React.FC<JobManagementProps> = ({
                   }}
                   className="mt-4 px-4 py-2 bg-smart-navy text-white rounded-lg font-medium hover:bg-blue-900 transition-colors"
                 >
-                  Filtreleri Temizle
+                  {t.clearFilters}
                 </button>
               )}
             </div>
@@ -693,7 +750,7 @@ export const JobManagement: React.FC<JobManagementProps> = ({
 
               <div className="mb-4">
                 <div className="flex justify-between text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">
-                  <span>İlerleme Durumu</span>
+                  <span>{t.progressStatus}</span>
                   <span>{job.progress}%</span>
                 </div>
                 <div className="w-full bg-gray-100 dark:bg-slate-700 rounded-full h-2">
@@ -710,21 +767,21 @@ export const JobManagement: React.FC<JobManagementProps> = ({
               <div className="bg-gray-50 dark:bg-slate-700 rounded-lg p-4 border border-gray-100 dark:border-slate-600">
                 <h4 className="text-xs font-bold text-smart-navy dark:text-white uppercase mb-3 flex items-center gap-2">
                   <Truck size={14} />
-                  Atanan Makineler ({job.assignedMachineIds.length})
+                  {t.assignedMachines} ({job.assignedMachineIds.length})
                 </h4>
                 <div className="flex flex-wrap gap-2">
                   {job.assignedMachineIds.map(mid => {
                     const machine = machines.find(m => m.id === mid);
                     const operator = operators.find(o => o.id === machine?.assignedOperatorId);
                     return machine ? (
-                      <div key={mid} className="bg-white dark:bg-slate-600 border border-gray-200 dark:border-slate-500 text-gray-600 dark:text-gray-200 text-xs px-2 py-1 rounded shadow-sm flex items-center gap-1" title={operator ? `Op: ${operator.name}` : 'Operatör Yok'}>
+                      <div key={mid} className="bg-white dark:bg-slate-600 border border-gray-200 dark:border-slate-500 text-gray-600 dark:text-gray-200 text-xs px-2 py-1 rounded shadow-sm flex items-center gap-1" title={operator ? `Op: ${operator.name}` : t.noOperator}>
                         <span>{machine.brand} {machine.model}</span>
                         {operator && <User size={10} className="text-gray-400" />}
                       </div>
                     ) : null;
                   })}
                   {job.assignedMachineIds.length === 0 && (
-                    <span className="text-xs text-gray-400 italic">Henüz makine atanmadı.</span>
+                    <span className="text-xs text-gray-400 italic">{t.noMachinesAssigned}</span>
                   )}
                 </div>
               </div>
@@ -733,7 +790,7 @@ export const JobManagement: React.FC<JobManagementProps> = ({
               <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 border border-blue-100 dark:border-blue-800">
                 <h4 className="text-xs font-bold text-smart-navy dark:text-white uppercase mb-3 flex items-center gap-2">
                   <User size={14} />
-                  Atanan Operatörler ({job.assignedOperatorIds?.length || 0})
+                  {t.assignedOperators} ({job.assignedOperatorIds?.length || 0})
                 </h4>
                 <div className="flex flex-wrap gap-2">
                   {job.assignedOperatorIds?.map(oid => {
@@ -746,7 +803,7 @@ export const JobManagement: React.FC<JobManagementProps> = ({
                     ) : null;
                   })}
                   {(!job.assignedOperatorIds || job.assignedOperatorIds.length === 0) && (
-                    <span className="text-xs text-gray-400 italic">Henüz operatör atanmadı.</span>
+                    <span className="text-xs text-gray-400 italic">{t.noOperatorsAssigned}</span>
                   )}
                 </div>
               </div>
@@ -754,7 +811,7 @@ export const JobManagement: React.FC<JobManagementProps> = ({
               <div className="mt-4 pt-4 border-t border-gray-100 dark:border-slate-700 flex justify-between items-center text-sm">
                 <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
                   <Calendar size={16} />
-                  <span>Başlangıç: <span className="font-bold text-smart-navy dark:text-white">{job.startDate}</span></span>
+                  <span>{t.startDate}: <span className="font-bold text-smart-navy dark:text-white">{job.startDate}</span></span>
                 </div>
                 <div className="flex items-center gap-2">
                   <button
@@ -762,22 +819,22 @@ export const JobManagement: React.FC<JobManagementProps> = ({
                     className="text-blue-600 dark:text-blue-400 hover:underline font-medium text-xs flex items-center gap-1"
                   >
                     <Eye size={14} />
-                    Detaylar
+                    {t.details}
                   </button>
-                  {updateJob && (
+                  {canEdit && updateJob && (
                     <button
                       onClick={(e) => { e.stopPropagation(); openEditModal(job); }}
                       className="text-amber-600 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/30 p-1.5 rounded-lg transition-colors"
-                      title="Düzenle"
+                      title={t.edit}
                     >
                       <Edit2 size={14} />
                     </button>
                   )}
-                  {deleteJob && (
+                  {canDelete && deleteJob && (
                     <button
                       onClick={(e) => { e.stopPropagation(); openDeleteConfirm(job); }}
                       className="text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 p-1.5 rounded-lg transition-colors"
-                      title="Sil"
+                      title={t.delete}
                     >
                       <Trash2 size={14} />
                     </button>
@@ -796,7 +853,7 @@ export const JobManagement: React.FC<JobManagementProps> = ({
             <div className="p-6 border-b border-gray-100 dark:border-slate-700 flex justify-between items-center sticky top-0 bg-white dark:bg-slate-800 z-10">
               <h3 className="text-2xl font-bold text-smart-navy dark:text-white flex items-center gap-2">
                 <Building2 className="text-smart-yellow" />
-                Yeni İş Ekle
+                {t.modal.addTitle}
               </h3>
               <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
                 <X size={24} />
@@ -807,7 +864,7 @@ export const JobManagement: React.FC<JobManagementProps> = ({
               {/* Title */}
               <div>
                 <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
-                  İş Başlığı *
+                  {t.jobTitle} *
                 </label>
                 <input
                   type="text"
@@ -815,28 +872,28 @@ export const JobManagement: React.FC<JobManagementProps> = ({
                   value={formData.title}
                   onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
                   className="w-full px-4 py-3 border border-gray-200 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-smart-yellow focus:border-transparent dark:bg-slate-700 dark:text-white"
-                  placeholder="örn: Kuzey Otoyolu Viyadük İnşaatı"
+                  placeholder={t.jobTitlePlaceholder}
                 />
               </div>
 
               {/* Description */}
               <div>
                 <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
-                  Açıklama
+                  {t.descriptionLabel}
                 </label>
                 <textarea
                   value={formData.description}
                   onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
                   className="w-full px-4 py-3 border border-gray-200 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-smart-yellow focus:border-transparent dark:bg-slate-700 dark:text-white resize-none"
                   rows={3}
-                  placeholder="İş detaylarını girin..."
+                  placeholder={t.descriptionPlaceholder}
                 />
               </div>
 
               {/* Location */}
               <div>
                 <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
-                  Konum / Şantiye Adı *
+                  {t.locationLabel} *
                 </label>
                 <input
                   type="text"
@@ -844,43 +901,55 @@ export const JobManagement: React.FC<JobManagementProps> = ({
                   value={formData.location}
                   onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
                   className="w-full px-4 py-3 border border-gray-200 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-smart-yellow focus:border-transparent dark:bg-slate-700 dark:text-white"
-                  placeholder="örn: İstanbul, Levent Şantiyesi"
+                  placeholder={t.locationPlaceholder}
                 />
               </div>
 
-              {/* Coordinates */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
-                    Enlem (Lat)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.0001"
-                    value={formData.coordinates.lat}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      coordinates: { ...prev.coordinates, lat: parseFloat(e.target.value) || 0 }
-                    }))}
-                    className="w-full px-4 py-3 border border-gray-200 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-smart-yellow focus:border-transparent dark:bg-slate-700 dark:text-white"
-                    placeholder="41.0082"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
-                    Boylam (Lng)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.0001"
-                    value={formData.coordinates.lng}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      coordinates: { ...prev.coordinates, lng: parseFloat(e.target.value) || 0 }
-                    }))}
-                    className="w-full px-4 py-3 border border-gray-200 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-smart-yellow focus:border-transparent dark:bg-slate-700 dark:text-white"
-                    placeholder="28.9784"
-                  />
+              {/* Coordinates - Map Selection */}
+              <div>
+                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
+                  {t.coordinatesLabel} - {t.clickMapToSelect || 'Haritaya tıklayarak konum seçin'}
+                </label>
+                <div className="border border-gray-200 dark:border-slate-600 rounded-xl overflow-hidden">
+                  <div className="h-[300px]">
+                    <MapContainer
+                      center={[formData.coordinates.lat, formData.coordinates.lng]}
+                      zoom={10}
+                      style={{ height: '100%', width: '100%' }}
+                      scrollWheelZoom={true}
+                    >
+                      <TileLayer
+                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                      />
+                      <ClickableMapMarker
+                        onLocationSelect={(lat, lng) => {
+                          setFormData(prev => ({
+                            ...prev,
+                            coordinates: { lat, lng }
+                          }));
+                        }}
+                        selectedCoordinates={formData.coordinates}
+                      />
+                    </MapContainer>
+                  </div>
+                  <div className="bg-gray-50 dark:bg-slate-700 p-3 flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+                      <Target size={16} className="text-smart-yellow" />
+                      <span className="font-medium">
+                        {formData.coordinates.lat.toFixed(4)}, {formData.coordinates.lng.toFixed(4)}
+                      </span>
+                    </div>
+                    <a
+                      href={`https://www.google.com/maps?q=${formData.coordinates.lat},${formData.coordinates.lng}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 dark:text-blue-400 hover:underline text-sm flex items-center gap-1"
+                    >
+                      <Navigation size={14} />
+                      {t.openGoogleMaps}
+                    </a>
+                  </div>
                 </div>
               </div>
 
@@ -888,7 +957,7 @@ export const JobManagement: React.FC<JobManagementProps> = ({
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
-                    Başlangıç Tarihi *
+                    {t.startDateLabel} *
                   </label>
                   <input
                     type="date"
@@ -900,7 +969,7 @@ export const JobManagement: React.FC<JobManagementProps> = ({
                 </div>
                 <div>
                   <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
-                    Bitiş Tarihi
+                    {t.endDateLabel}
                   </label>
                   <input
                     type="date"
@@ -915,32 +984,32 @@ export const JobManagement: React.FC<JobManagementProps> = ({
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
-                    Durum
+                    {t.statusLabel}
                   </label>
                   <select
                     value={formData.status}
                     onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value as Job['status'] }))}
                     className="w-full px-4 py-3 border border-gray-200 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-smart-yellow focus:border-transparent dark:bg-slate-700 dark:text-white"
                   >
-                    <option value="Scheduled">Planlandı</option>
-                    <option value="In Progress">Devam Ediyor</option>
-                    <option value="Delayed">Gecikmede</option>
-                    <option value="Completed">Tamamlandı</option>
+                    <option value="Scheduled">{t.status.scheduled}</option>
+                    <option value="In Progress">{t.status.inProgress}</option>
+                    <option value="Delayed">{t.status.delayed}</option>
+                    <option value="Completed">{t.status.completed}</option>
                   </select>
                 </div>
                 <div>
                   <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
-                    Öncelik
+                    {t.priorityLabel}
                   </label>
                   <select
                     value={formData.priority}
                     onChange={(e) => setFormData(prev => ({ ...prev, priority: e.target.value as Job['priority'] }))}
                     className="w-full px-4 py-3 border border-gray-200 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-smart-yellow focus:border-transparent dark:bg-slate-700 dark:text-white"
                   >
-                    <option value="low">Düşük</option>
-                    <option value="medium">Orta</option>
-                    <option value="high">Yüksek</option>
-                    <option value="urgent">Acil</option>
+                    <option value="low">{t.priority.low}</option>
+                    <option value="medium">{t.priority.medium}</option>
+                    <option value="high">{t.priority.high}</option>
+                    <option value="urgent">{t.priority.urgent}</option>
                   </select>
                 </div>
               </div>
@@ -948,7 +1017,7 @@ export const JobManagement: React.FC<JobManagementProps> = ({
               {/* Progress */}
               <div>
                 <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
-                  İlerleme: {formData.progress}%
+                  {t.progressLabel}: {formData.progress}%
                 </label>
                 <input
                   type="range"
@@ -963,11 +1032,11 @@ export const JobManagement: React.FC<JobManagementProps> = ({
               {/* Machine Selection */}
               <div>
                 <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
-                  Makine Ata
+                  {t.assignMachineLabel}
                 </label>
                 <div className="border border-gray-200 dark:border-slate-600 rounded-lg p-4 max-h-48 overflow-y-auto">
                   {machines.length === 0 ? (
-                    <p className="text-gray-400 text-sm italic">Henüz makine eklenmemiş.</p>
+                    <p className="text-gray-400 text-sm italic">{t.noMachinesAdded}</p>
                   ) : (
                     <div className="space-y-2">
                       {machines.map(machine => (
@@ -1002,11 +1071,11 @@ export const JobManagement: React.FC<JobManagementProps> = ({
               {/* Operator Selection */}
               <div>
                 <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
-                  Operatör Ata
+                  {t.assignOperatorLabel}
                 </label>
                 <div className="border border-gray-200 dark:border-slate-600 rounded-lg p-4 max-h-48 overflow-y-auto">
                   {operators.length === 0 ? (
-                    <p className="text-gray-400 text-sm italic">Henüz operatör eklenmemiş.</p>
+                    <p className="text-gray-400 text-sm italic">{t.noOperatorsAdded}</p>
                   ) : (
                     <div className="space-y-2">
                       {operators.map(operator => (
@@ -1030,7 +1099,7 @@ export const JobManagement: React.FC<JobManagementProps> = ({
                             </div>
                             <div>
                               <p className="font-medium text-smart-navy dark:text-white">{operator.name}</p>
-                              <p className="text-xs text-gray-500 dark:text-gray-400">{operator.licenseType?.join(', ') || 'Lisans bilgisi yok'}</p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400">{operator.licenseType?.join(', ') || '{t.noLicenseInfo}'}</p>
                             </div>
                           </div>
                         </label>
@@ -1047,7 +1116,7 @@ export const JobManagement: React.FC<JobManagementProps> = ({
                   onClick={() => setIsModalOpen(false)}
                   className="px-6 py-3 rounded-lg font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
                 >
-                  İptal
+                  {t.modal.cancel}
                 </button>
                 <button
                   type="submit"
@@ -1057,12 +1126,12 @@ export const JobManagement: React.FC<JobManagementProps> = ({
                   {isSubmitting ? (
                     <>
                       <Loader2 size={20} className="animate-spin" />
-                      Kaydediliyor...
+                      {t.saving}
                     </>
                   ) : (
                     <>
                       <Plus size={20} />
-                      İş Ekle
+                      {t.addJob}
                     </>
                   )}
                 </button>
@@ -1095,13 +1164,13 @@ export const JobManagement: React.FC<JobManagementProps> = ({
                   {/* Status Cards */}
                   <div className="grid grid-cols-2 gap-4">
                     <div className="bg-gray-50 dark:bg-slate-700 rounded-xl p-4">
-                      <p className="text-xs text-gray-500 dark:text-gray-400 uppercase font-bold mb-1">Durum</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 uppercase font-bold mb-1">{t.statusLabel}</p>
                       <span className={`px-3 py-1 rounded-full text-sm font-bold ${getStatusColor(selectedJob.status)}`}>
                         {getStatusLabel(selectedJob.status)}
                       </span>
                     </div>
                     <div className="bg-gray-50 dark:bg-slate-700 rounded-xl p-4">
-                      <p className="text-xs text-gray-500 dark:text-gray-400 uppercase font-bold mb-1">Öncelik</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 uppercase font-bold mb-1">{t.priorityLabel}</p>
                       <span className={`px-3 py-1 rounded text-sm font-bold ${getPriorityColor(selectedJob.priority || 'medium')}`}>
                         {getPriorityLabel(selectedJob.priority || 'medium')}
                       </span>
@@ -1111,7 +1180,7 @@ export const JobManagement: React.FC<JobManagementProps> = ({
                   {/* Progress */}
                   <div className="bg-gray-50 dark:bg-slate-700 rounded-xl p-4">
                     <div className="flex justify-between items-center mb-2">
-                      <p className="text-sm font-bold text-gray-700 dark:text-gray-300">İlerleme Durumu</p>
+                      <p className="text-sm font-bold text-gray-700 dark:text-gray-300">{t.progressStatus}</p>
                       <span className="text-2xl font-bold text-smart-navy dark:text-white">{selectedJob.progress}%</span>
                     </div>
                     <div className="w-full bg-gray-200 dark:bg-slate-600 rounded-full h-3">
@@ -1128,22 +1197,22 @@ export const JobManagement: React.FC<JobManagementProps> = ({
                   {/* Description */}
                   {selectedJob.description && (
                     <div className="bg-gray-50 dark:bg-slate-700 rounded-xl p-4">
-                      <p className="text-xs text-gray-500 dark:text-gray-400 uppercase font-bold mb-2">Açıklama</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 uppercase font-bold mb-2">{t.descriptionLabel}</p>
                       <p className="text-gray-700 dark:text-gray-300">{selectedJob.description}</p>
                     </div>
                   )}
 
                   {/* Dates */}
                   <div className="bg-gray-50 dark:bg-slate-700 rounded-xl p-4">
-                    <p className="text-xs text-gray-500 dark:text-gray-400 uppercase font-bold mb-3">Tarihler</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 uppercase font-bold mb-3">{t.dates}</p>
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
-                        <span className="text-gray-600 dark:text-gray-400">Başlangıç:</span>
+                        <span className="text-gray-600 dark:text-gray-400">{t.startDate}:</span>
                         <span className="font-bold text-smart-navy dark:text-white">{selectedJob.startDate}</span>
                       </div>
                       {selectedJob.endDate && (
                         <div className="flex items-center justify-between">
-                          <span className="text-gray-600 dark:text-gray-400">Bitiş:</span>
+                          <span className="text-gray-600 dark:text-gray-400">{t.endLabel}</span>
                           <span className="font-bold text-smart-navy dark:text-white">{selectedJob.endDate}</span>
                         </div>
                       )}
@@ -1154,7 +1223,7 @@ export const JobManagement: React.FC<JobManagementProps> = ({
                   <div className="bg-gray-50 dark:bg-slate-700 rounded-xl p-4">
                     <p className="text-xs text-gray-500 dark:text-gray-400 uppercase font-bold mb-3 flex items-center gap-2">
                       <Truck size={14} />
-                      Atanan Makineler ({selectedJob.assignedMachineIds.length})
+                      {t.assignedMachines} ({selectedJob.assignedMachineIds.length})
                     </p>
                     <div className="space-y-2">
                       {selectedJob.assignedMachineIds.map(mid => {
@@ -1168,11 +1237,11 @@ export const JobManagement: React.FC<JobManagementProps> = ({
                                 <p className="text-xs text-gray-500 dark:text-gray-400">{machine.brand} {machine.model}</p>
                               </div>
                               <span className={`px-2 py-1 rounded text-xs font-bold ${
-                                machine.status === 'Aktif' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' :
-                                machine.status === 'Bakımda' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300' :
+                                machine.status === MachineStatus.Active ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' :
+                                machine.status === MachineStatus.Maintenance ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300' :
                                 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
                               }`}>
-                                {machine.status}
+                                {machine.status === MachineStatus.Active ? t.machineStatus.active : machine.status === MachineStatus.Maintenance ? t.machineStatus.maintenance : t.machineStatus.idle}
                               </span>
                             </div>
                             {operator && (
@@ -1185,7 +1254,7 @@ export const JobManagement: React.FC<JobManagementProps> = ({
                         ) : null;
                       })}
                       {selectedJob.assignedMachineIds.length === 0 && (
-                        <p className="text-gray-400 italic text-sm">Henüz makine atanmadı.</p>
+                        <p className="text-gray-400 italic text-sm">{t.noMachineAssigned}</p>
                       )}
                     </div>
                   </div>
@@ -1194,7 +1263,7 @@ export const JobManagement: React.FC<JobManagementProps> = ({
                   <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4">
                     <p className="text-xs text-gray-500 dark:text-gray-400 uppercase font-bold mb-3 flex items-center gap-2">
                       <User size={14} />
-                      Atanan Operatörler ({selectedJob.assignedOperatorIds?.length || 0})
+                      {t.assignedOperators} ({selectedJob.assignedOperatorIds?.length || 0})
                     </p>
                     <div className="space-y-2">
                       {selectedJob.assignedOperatorIds?.map(oid => {
@@ -1207,14 +1276,14 @@ export const JobManagement: React.FC<JobManagementProps> = ({
                               </div>
                               <div>
                                 <p className="font-bold text-smart-navy dark:text-white">{operator.name}</p>
-                                <p className="text-xs text-gray-500 dark:text-gray-400">{operator.licenseType?.join(', ') || 'Lisans bilgisi yok'}</p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">{operator.licenseType?.join(', ') || '{t.noLicenseInfo}'}</p>
                               </div>
                             </div>
                           </div>
                         ) : null;
                       })}
                       {(!selectedJob.assignedOperatorIds || selectedJob.assignedOperatorIds.length === 0) && (
-                        <p className="text-gray-400 italic text-sm">Henüz operatör atanmadı.</p>
+                        <p className="text-gray-400 italic text-sm">{t.noOperatorsAssigned}</p>
                       )}
                     </div>
                   </div>
@@ -1251,7 +1320,7 @@ export const JobManagement: React.FC<JobManagementProps> = ({
                               <Marker
                                 key={`detail-machine-${machine.id}`}
                                 position={[machine.location.lat, machine.location.lng]}
-                                icon={machine.status === 'Aktif' ? activeMachineIcon : machineIcon}
+                                icon={machine.status === MachineStatus.Active ? activeMachineIcon : machineIcon}
                               >
                                 <Popup>
                                   <div>
@@ -1270,19 +1339,19 @@ export const JobManagement: React.FC<JobManagementProps> = ({
                   ) : (
                     <div className="bg-gray-50 dark:bg-slate-700 rounded-xl p-8 text-center h-[400px] flex flex-col items-center justify-center">
                       <Map size={48} className="text-gray-300 dark:text-gray-600 mb-4" />
-                      <p className="text-gray-500 dark:text-gray-400">Konum bilgisi mevcut değil</p>
-                      <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">Bu iş için koordinat eklenmemiş.</p>
+                      <p className="text-gray-500 dark:text-gray-400">{t.noLocationInfo}</p>
+                      <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">{t.noCoordinates}</p>
                     </div>
                   )}
 
                   {/* Coordinates Info */}
-                  {selectedJob.coordinates && (
+                  {selectedJob.coordinates && typeof selectedJob.coordinates.lat === 'number' && typeof selectedJob.coordinates.lng === 'number' && (
                     <div className="bg-gray-50 dark:bg-slate-700 rounded-xl p-4">
-                      <p className="text-xs text-gray-500 dark:text-gray-400 uppercase font-bold mb-2">Koordinatlar</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 uppercase font-bold mb-2">{t.coordinatesLabel}</p>
                       <div className="flex items-center gap-4 text-sm">
                         <span className="text-gray-600 dark:text-gray-400">
                           <Target size={14} className="inline mr-1" />
-                          {selectedJob.coordinates.lat.toFixed(4)}, {selectedJob.coordinates.lng.toFixed(4)}
+                          {Number(selectedJob.coordinates.lat).toFixed(4)}, {Number(selectedJob.coordinates.lng).toFixed(4)}
                         </span>
                         <a
                           href={`https://www.google.com/maps?q=${selectedJob.coordinates.lat},${selectedJob.coordinates.lng}`}
@@ -1291,7 +1360,7 @@ export const JobManagement: React.FC<JobManagementProps> = ({
                           className="text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
                         >
                           <Navigation size={14} />
-                          Google Maps'te Aç
+                          {t.openGoogleMaps}
                         </a>
                       </div>
                     </div>
@@ -1303,7 +1372,7 @@ export const JobManagement: React.FC<JobManagementProps> = ({
             {/* Footer Actions */}
             <div className="p-6 border-t border-gray-100 dark:border-slate-700 flex justify-between">
               <div className="flex gap-2">
-                {updateJob && (
+                {canEdit && updateJob && (
                   <button
                     onClick={() => {
                       setIsDetailModalOpen(false);
@@ -1312,16 +1381,16 @@ export const JobManagement: React.FC<JobManagementProps> = ({
                     className="px-4 py-2 rounded-lg font-bold text-amber-600 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors flex items-center gap-2"
                   >
                     <Edit2 size={18} />
-                    Düzenle
+                    {t.edit}
                   </button>
                 )}
-                {deleteJob && (
+                {canDelete && deleteJob && (
                   <button
                     onClick={() => openDeleteConfirm(selectedJob)}
                     className="px-4 py-2 rounded-lg font-bold text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors flex items-center gap-2"
                   >
                     <Trash2 size={18} />
-                    Sil
+                    {t.delete}
                   </button>
                 )}
               </div>
@@ -1329,7 +1398,7 @@ export const JobManagement: React.FC<JobManagementProps> = ({
                 onClick={() => setIsDetailModalOpen(false)}
                 className="px-6 py-3 rounded-lg font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
               >
-                Kapat
+                {t.modal.close}
               </button>
             </div>
           </div>
@@ -1343,7 +1412,7 @@ export const JobManagement: React.FC<JobManagementProps> = ({
             <div className="p-6 border-b border-gray-100 dark:border-slate-700 flex justify-between items-center sticky top-0 bg-white dark:bg-slate-800 z-10">
               <h3 className="text-2xl font-bold text-smart-navy dark:text-white flex items-center gap-2">
                 <Edit2 className="text-amber-500" />
-                İşi Düzenle
+                {t.modal.editTitle}
               </h3>
               <button onClick={() => { setIsEditModalOpen(false); resetForm(); }} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
                 <X size={24} />
@@ -1354,7 +1423,7 @@ export const JobManagement: React.FC<JobManagementProps> = ({
               {/* Title */}
               <div>
                 <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
-                  İş Başlığı *
+                  {t.jobTitle} *
                 </label>
                 <input
                   type="text"
@@ -1362,28 +1431,28 @@ export const JobManagement: React.FC<JobManagementProps> = ({
                   value={formData.title}
                   onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
                   className="w-full px-4 py-3 border border-gray-200 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-smart-yellow focus:border-transparent dark:bg-slate-700 dark:text-white"
-                  placeholder="örn: Kuzey Otoyolu Viyadük İnşaatı"
+                  placeholder={t.jobTitlePlaceholder}
                 />
               </div>
 
               {/* Description */}
               <div>
                 <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
-                  Açıklama
+                  {t.descriptionLabel}
                 </label>
                 <textarea
                   value={formData.description}
                   onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
                   className="w-full px-4 py-3 border border-gray-200 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-smart-yellow focus:border-transparent dark:bg-slate-700 dark:text-white resize-none"
                   rows={3}
-                  placeholder="İş detaylarını girin..."
+                  placeholder={t.descriptionPlaceholder}
                 />
               </div>
 
               {/* Location */}
               <div>
                 <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
-                  Konum / Şantiye Adı *
+                  {t.locationLabel} *
                 </label>
                 <input
                   type="text"
@@ -1391,43 +1460,55 @@ export const JobManagement: React.FC<JobManagementProps> = ({
                   value={formData.location}
                   onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
                   className="w-full px-4 py-3 border border-gray-200 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-smart-yellow focus:border-transparent dark:bg-slate-700 dark:text-white"
-                  placeholder="örn: İstanbul, Levent Şantiyesi"
+                  placeholder={t.locationPlaceholder}
                 />
               </div>
 
-              {/* Coordinates */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
-                    Enlem (Lat)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.0001"
-                    value={formData.coordinates.lat}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      coordinates: { ...prev.coordinates, lat: parseFloat(e.target.value) || 0 }
-                    }))}
-                    className="w-full px-4 py-3 border border-gray-200 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-smart-yellow focus:border-transparent dark:bg-slate-700 dark:text-white"
-                    placeholder="41.0082"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
-                    Boylam (Lng)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.0001"
-                    value={formData.coordinates.lng}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      coordinates: { ...prev.coordinates, lng: parseFloat(e.target.value) || 0 }
-                    }))}
-                    className="w-full px-4 py-3 border border-gray-200 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-smart-yellow focus:border-transparent dark:bg-slate-700 dark:text-white"
-                    placeholder="28.9784"
-                  />
+              {/* Coordinates - Map Selection */}
+              <div>
+                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
+                  {t.coordinatesLabel} - {t.clickMapToSelect || 'Haritaya tıklayarak konum seçin'}
+                </label>
+                <div className="border border-gray-200 dark:border-slate-600 rounded-xl overflow-hidden">
+                  <div className="h-[300px]">
+                    <MapContainer
+                      center={[formData.coordinates.lat, formData.coordinates.lng]}
+                      zoom={10}
+                      style={{ height: '100%', width: '100%' }}
+                      scrollWheelZoom={true}
+                    >
+                      <TileLayer
+                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                      />
+                      <ClickableMapMarker
+                        onLocationSelect={(lat, lng) => {
+                          setFormData(prev => ({
+                            ...prev,
+                            coordinates: { lat, lng }
+                          }));
+                        }}
+                        selectedCoordinates={formData.coordinates}
+                      />
+                    </MapContainer>
+                  </div>
+                  <div className="bg-gray-50 dark:bg-slate-700 p-3 flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+                      <Target size={16} className="text-smart-yellow" />
+                      <span className="font-medium">
+                        {formData.coordinates.lat.toFixed(4)}, {formData.coordinates.lng.toFixed(4)}
+                      </span>
+                    </div>
+                    <a
+                      href={`https://www.google.com/maps?q=${formData.coordinates.lat},${formData.coordinates.lng}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 dark:text-blue-400 hover:underline text-sm flex items-center gap-1"
+                    >
+                      <Navigation size={14} />
+                      {t.openGoogleMaps}
+                    </a>
+                  </div>
                 </div>
               </div>
 
@@ -1435,7 +1516,7 @@ export const JobManagement: React.FC<JobManagementProps> = ({
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
-                    Başlangıç Tarihi *
+                    {t.startDateLabel} *
                   </label>
                   <input
                     type="date"
@@ -1447,7 +1528,7 @@ export const JobManagement: React.FC<JobManagementProps> = ({
                 </div>
                 <div>
                   <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
-                    Bitiş Tarihi
+                    {t.endDateLabel}
                   </label>
                   <input
                     type="date"
@@ -1462,32 +1543,32 @@ export const JobManagement: React.FC<JobManagementProps> = ({
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
-                    Durum
+                    {t.statusLabel}
                   </label>
                   <select
                     value={formData.status}
                     onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value as Job['status'] }))}
                     className="w-full px-4 py-3 border border-gray-200 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-smart-yellow focus:border-transparent dark:bg-slate-700 dark:text-white"
                   >
-                    <option value="Scheduled">Planlandı</option>
-                    <option value="In Progress">Devam Ediyor</option>
-                    <option value="Delayed">Gecikmede</option>
-                    <option value="Completed">Tamamlandı</option>
+                    <option value="Scheduled">{t.status.scheduled}</option>
+                    <option value="In Progress">{t.status.inProgress}</option>
+                    <option value="Delayed">{t.status.delayed}</option>
+                    <option value="Completed">{t.status.completed}</option>
                   </select>
                 </div>
                 <div>
                   <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
-                    Öncelik
+                    {t.priorityLabel}
                   </label>
                   <select
                     value={formData.priority}
                     onChange={(e) => setFormData(prev => ({ ...prev, priority: e.target.value as Job['priority'] }))}
                     className="w-full px-4 py-3 border border-gray-200 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-smart-yellow focus:border-transparent dark:bg-slate-700 dark:text-white"
                   >
-                    <option value="low">Düşük</option>
-                    <option value="medium">Orta</option>
-                    <option value="high">Yüksek</option>
-                    <option value="urgent">Acil</option>
+                    <option value="low">{t.priority.low}</option>
+                    <option value="medium">{t.priority.medium}</option>
+                    <option value="high">{t.priority.high}</option>
+                    <option value="urgent">{t.priority.urgent}</option>
                   </select>
                 </div>
               </div>
@@ -1495,7 +1576,7 @@ export const JobManagement: React.FC<JobManagementProps> = ({
               {/* Progress */}
               <div>
                 <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
-                  İlerleme: {formData.progress}%
+                  {t.progressLabel}: {formData.progress}%
                 </label>
                 <input
                   type="range"
@@ -1510,11 +1591,11 @@ export const JobManagement: React.FC<JobManagementProps> = ({
               {/* Machine Selection */}
               <div>
                 <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
-                  Makine Ata
+                  {t.assignMachineLabel}
                 </label>
                 <div className="border border-gray-200 dark:border-slate-600 rounded-lg p-4 max-h-48 overflow-y-auto">
                   {machines.length === 0 ? (
-                    <p className="text-gray-400 text-sm italic">Henüz makine eklenmemiş.</p>
+                    <p className="text-gray-400 text-sm italic">{t.noMachinesAdded}</p>
                   ) : (
                     <div className="space-y-2">
                       {machines.map(machine => (
@@ -1549,11 +1630,11 @@ export const JobManagement: React.FC<JobManagementProps> = ({
               {/* Operator Selection */}
               <div>
                 <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
-                  Operatör Ata
+                  {t.assignOperatorLabel}
                 </label>
                 <div className="border border-gray-200 dark:border-slate-600 rounded-lg p-4 max-h-48 overflow-y-auto">
                   {operators.length === 0 ? (
-                    <p className="text-gray-400 text-sm italic">Henüz operatör eklenmemiş.</p>
+                    <p className="text-gray-400 text-sm italic">{t.noOperatorsAdded}</p>
                   ) : (
                     <div className="space-y-2">
                       {operators.map(operator => (
@@ -1577,7 +1658,7 @@ export const JobManagement: React.FC<JobManagementProps> = ({
                             </div>
                             <div>
                               <p className="font-medium text-smart-navy dark:text-white">{operator.name}</p>
-                              <p className="text-xs text-gray-500 dark:text-gray-400">{operator.licenseType?.join(', ') || 'Lisans bilgisi yok'}</p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400">{operator.licenseType?.join(', ') || '{t.noLicenseInfo}'}</p>
                             </div>
                           </div>
                         </label>
@@ -1594,7 +1675,7 @@ export const JobManagement: React.FC<JobManagementProps> = ({
                   onClick={() => { setIsEditModalOpen(false); resetForm(); }}
                   className="px-6 py-3 rounded-lg font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
                 >
-                  İptal
+                  {t.modal.cancel}
                 </button>
                 <button
                   type="submit"
@@ -1604,12 +1685,12 @@ export const JobManagement: React.FC<JobManagementProps> = ({
                   {isSubmitting ? (
                     <>
                       <Loader2 size={20} className="animate-spin" />
-                      Kaydediliyor...
+                      {t.saving}
                     </>
                   ) : (
                     <>
                       <CheckCircle size={20} />
-                      Değişiklikleri Kaydet
+                      {t.modal.save}
                     </>
                   )}
                 </button>
@@ -1628,13 +1709,13 @@ export const JobManagement: React.FC<JobManagementProps> = ({
                 <AlertTriangle size={32} className="text-red-600 dark:text-red-400" />
               </div>
               <h3 className="text-xl font-bold text-center text-smart-navy dark:text-white mb-2">
-                İşi Silmek İstediğinize Emin Misiniz?
+                {t.deleteConfirmTitle}
               </h3>
               <p className="text-center text-gray-500 dark:text-gray-400 mb-2">
                 <span className="font-bold text-smart-navy dark:text-white">{jobToDelete.title}</span>
               </p>
               <p className="text-center text-sm text-gray-400 dark:text-gray-500">
-                Bu işlem geri alınamaz. İş ve tüm ilişkili veriler kalıcı olarak silinecektir.
+                {t.deleteWarning}
               </p>
             </div>
             <div className="p-6 border-t border-gray-100 dark:border-slate-700 flex gap-3">
@@ -1642,14 +1723,14 @@ export const JobManagement: React.FC<JobManagementProps> = ({
                 onClick={() => { setIsDeleteConfirmOpen(false); setJobToDelete(null); }}
                 className="flex-1 px-6 py-3 rounded-lg font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
               >
-                İptal
+                {t.modal.cancel}
               </button>
               <button
                 onClick={handleDelete}
                 className="flex-1 px-6 py-3 rounded-lg font-bold bg-red-600 text-white hover:bg-red-700 transition-colors flex items-center justify-center gap-2"
               >
                 <Trash2 size={18} />
-                Evet, Sil
+                {t.delete}
               </button>
             </div>
           </div>

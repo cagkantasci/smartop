@@ -19,9 +19,16 @@ export function useSocket() {
         await socketService.connect(token);
         setIsConnected(true);
         setConnectionError(null);
-      } catch (error) {
+      } catch (error: any) {
         console.error('Socket connection failed:', error);
-        setConnectionError('Failed to connect to real-time server');
+        // Handle specific error types
+        if (error?.message?.includes('426') || error?.message?.includes('Upgrade Required')) {
+          setConnectionError('WebSocket sunucusuna bağlanılamıyor. Backend servisi çalışıyor olmalı.');
+        } else if (error?.message?.includes('xhr poll error') || error?.message?.includes('ECONNREFUSED')) {
+          setConnectionError('Sunucuya erişilemiyor. Backend servisi çalışıyor mu?');
+        } else {
+          setConnectionError('Gerçek zamanlı sunucuya bağlanılamadı');
+        }
         setIsConnected(false);
       }
     };

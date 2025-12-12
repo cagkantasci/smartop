@@ -98,9 +98,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ machines, checklists, jobs
 
   // Chart Data Helpers
   const statusData = [
-    { name: 'Aktif', value: activeMachines },
-    { name: 'Bakımda', value: machines.filter(m => m.status === MachineStatus.Maintenance).length },
-    { name: 'Boşta', value: machines.filter(m => m.status === MachineStatus.Idle).length },
+    { name: t.stats.active, value: activeMachines },
+    { name: t.stats.maintenance, value: machines.filter(m => m.status === MachineStatus.Maintenance).length },
+    { name: t.stats.idle, value: machines.filter(m => m.status === MachineStatus.Idle).length },
   ];
   const COLORS = ['#15803d', '#b91c1c', '#F59E0B'];
 
@@ -108,23 +108,23 @@ export const Dashboard: React.FC<DashboardProps> = ({ machines, checklists, jobs
   const weeklyHoursData = useMemo(() => {
     if (chartFilterId === 'all') {
         return [
-            { name: 'Pzt', hours: 45 }, { name: 'Sal', hours: 52 }, { name: 'Çar', hours: 48 },
-            { name: 'Per', hours: 61 }, { name: 'Cum', hours: 55 }, { name: 'Cmt', hours: 32 }, { name: 'Paz', hours: 10 },
+            { name: t.days.mon, hours: 45 }, { name: t.days.tue, hours: 52 }, { name: t.days.wed, hours: 48 },
+            { name: t.days.thu, hours: 61 }, { name: t.days.fri, hours: 55 }, { name: t.days.sat, hours: 32 }, { name: t.days.sun, hours: 10 },
         ];
     } else {
         // Randomize mock data based on machine id to simulate difference
-        const seed = chartFilterId.charCodeAt(0); 
+        const seed = chartFilterId.charCodeAt(0);
         return [
-            { name: 'Pzt', hours: (seed % 10) + 2 }, 
-            { name: 'Sal', hours: (seed % 12) + 3 }, 
-            { name: 'Çar', hours: (seed % 11) + 1 },
-            { name: 'Per', hours: (seed % 13) + 4 }, 
-            { name: 'Cum', hours: (seed % 10) + 5 }, 
-            { name: 'Cmt', hours: (seed % 8) }, 
-            { name: 'Paz', hours: 0 },
+            { name: t.days.mon, hours: (seed % 10) + 2 },
+            { name: t.days.tue, hours: (seed % 12) + 3 },
+            { name: t.days.wed, hours: (seed % 11) + 1 },
+            { name: t.days.thu, hours: (seed % 13) + 4 },
+            { name: t.days.fri, hours: (seed % 10) + 5 },
+            { name: t.days.sat, hours: (seed % 8) },
+            { name: t.days.sun, hours: 0 },
         ];
     }
-  }, [chartFilterId]);
+  }, [chartFilterId, t.days]);
 
   // Navigation Handlers
   const openMachineList = () => setViewState('machineList');
@@ -164,15 +164,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ machines, checklists, jobs
                             <td className="p-4 font-bold text-smart-navy dark:text-white">{m.brand} {m.model}</td>
                             <td className="p-4 text-gray-600 dark:text-gray-400 font-mono text-xs">{m.serialNumber}</td>
                             <td className="p-4">
-                                <span className={`px-2 py-1 rounded text-xs font-bold 
-                                    ${m.status === 'Aktif' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100' : 
-                                      m.status === 'Bakımda' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100' : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'}`}>
-                                    {m.status}
+                                <span className={`px-2 py-1 rounded text-xs font-bold
+                                    ${m.status === MachineStatus.Active ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100' :
+                                      m.status === MachineStatus.Maintenance ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100' : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'}`}>
+                                    {m.status === MachineStatus.Active ? t.stats.active : m.status === MachineStatus.Maintenance ? t.stats.maintenance : t.stats.idle}
                                 </span>
                             </td>
-                            <td className="p-4 font-mono dark:text-gray-300">{m.engineHours.toLocaleString()} saat</td>
+                            <td className="p-4 font-mono dark:text-gray-300">{m.engineHours.toLocaleString()} {t.stats.hours}</td>
                             <td className="p-4 text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1">
-                                <MapPin size={14}/> {m.location?.address || 'Bilinmiyor'}
+                                <MapPin size={14}/> {m.location?.address || t.unknown}
                             </td>
                             <td className="p-4 text-right">
                                 <ChevronRight className="text-gray-300 dark:text-gray-600 group-hover:text-smart-navy dark:group-hover:text-white" />
@@ -190,7 +190,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ machines, checklists, jobs
       return (
         <div className="space-y-6 animate-fadeIn">
              <button onClick={() => setViewState('machineList')} className="flex items-center gap-2 text-gray-500 hover:text-smart-navy dark:text-gray-400 dark:hover:text-white">
-                <ArrowLeft size={20} /> Listeye Dön
+                <ArrowLeft size={20} /> {t.backToList}
             </button>
             
             {/* Header Card */}
@@ -205,9 +205,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ machines, checklists, jobs
                             <p className="text-gray-500 dark:text-gray-400 font-medium">{selectedMachine.name} | {selectedMachine.year}</p>
                         </div>
                         <div className={`px-4 py-2 rounded-lg font-bold text-white shadow-sm
-                            ${selectedMachine.status === 'Aktif' ? 'bg-green-600' : 
-                              selectedMachine.status === 'Bakımda' ? 'bg-red-600' : 'bg-gray-500'}`}>
-                            {selectedMachine.status}
+                            ${selectedMachine.status === MachineStatus.Active ? 'bg-green-600' :
+                              selectedMachine.status === MachineStatus.Maintenance ? 'bg-red-600' : 'bg-gray-500'}`}>
+                            {selectedMachine.status === MachineStatus.Active ? t.stats.active : selectedMachine.status === MachineStatus.Maintenance ? t.stats.maintenance : t.stats.idle}
                         </div>
                     </div>
                     
@@ -218,15 +218,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ machines, checklists, jobs
                         </div>
                         <div className="bg-gray-50 dark:bg-slate-700 p-3 rounded-lg border border-gray-200 dark:border-slate-600">
                             <p className="text-xs text-gray-500 dark:text-gray-400 uppercase font-bold">{t.table.hours}</p>
-                            <p className="font-mono font-bold text-smart-navy dark:text-white">{selectedMachine.engineHours.toLocaleString()} saat</p>
+                            <p className="font-mono font-bold text-smart-navy dark:text-white">{selectedMachine.engineHours.toLocaleString()} {t.stats.hours}</p>
                         </div>
                         <div className="bg-gray-50 dark:bg-slate-700 p-3 rounded-lg border border-gray-200 dark:border-slate-600">
-                            <p className="text-xs text-gray-500 dark:text-gray-400 uppercase font-bold">Son Bakım</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 uppercase font-bold">{t.lastMaintenance}</p>
                             <p className="font-mono font-bold text-smart-navy dark:text-white">{selectedMachine.lastService}</p>
                         </div>
                          <div className="bg-gray-50 dark:bg-slate-700 p-3 rounded-lg border border-gray-200 dark:border-slate-600">
-                            <p className="text-xs text-gray-500 dark:text-gray-400 uppercase font-bold">Operatör</p>
-                            <p className="font-bold text-smart-navy dark:text-white flex items-center gap-1"><User size={14}/> {selectedMachine.assignedOperatorId ? 'Atandı' : '-'}</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 uppercase font-bold">{t.operator}</p>
+                            <p className="font-bold text-smart-navy dark:text-white flex items-center gap-1"><User size={14}/> {selectedMachine.assignedOperatorId ? '-' : '-'}</p>
                         </div>
                     </div>
 
@@ -236,7 +236,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ machines, checklists, jobs
                         <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm">
                             <h4 className="font-bold text-smart-navy dark:text-white mb-4 flex items-center gap-2">
                                 <AlertTriangle className="text-smart-yellow" size={18} />
-                                Sık Görülen Arızalar / Parça Değişimi
+                                {t.commonFaults}
                             </h4>
                             <div className="h-48">
                                 <ResponsiveContainer width="100%" height="100%">
@@ -282,7 +282,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ machines, checklists, jobs
                     <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-4">
                          <h4 className="font-bold text-smart-navy dark:text-white mb-4 flex items-center gap-2">
                                 <Wrench className="text-gray-500 dark:text-gray-400" size={18} />
-                                Servis ve Bakım Kayıtları
+                                {t.serviceRecords}
                          </h4>
                          <div className="space-y-4">
                             {(selectedMachine.serviceHistory || []).length > 0 ? (
@@ -303,7 +303,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ machines, checklists, jobs
                                     </div>
                                 ))
                             ) : (
-                                <p className="text-sm text-gray-400 italic">Kayıtlı servis geçmişi bulunamadı.</p>
+                                <p className="text-sm text-gray-400 italic">{t.noServiceHistory}</p>
                             )}
                          </div>
                     </div>
@@ -347,7 +347,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ machines, checklists, jobs
           </div>
           <div>
             <p className="text-sm text-gray-500 dark:text-gray-400">{t.totalEngineHours}</p>
-            <p className="text-2xl font-bold text-gray-900 dark:text-white">{totalEngineHours.toLocaleString()} saat</p>
+            <p className="text-2xl font-bold text-gray-900 dark:text-white">{totalEngineHours.toLocaleString()} {t.stats.hours}</p>
           </div>
           <ChevronRight className="ml-auto text-gray-300 dark:text-gray-600 group-hover:text-smart-navy dark:group-hover:text-white" />
         </div>
@@ -390,28 +390,28 @@ export const Dashboard: React.FC<DashboardProps> = ({ machines, checklists, jobs
         <div className="p-4 border-b border-gray-100 dark:border-slate-700 flex justify-between items-center">
           <h3 className="text-lg font-bold text-smart-navy dark:text-white flex items-center gap-2">
             <Map size={20} className="text-blue-500" />
-            Canlı Harita - Makine, Operatör ve İş Konumları
+            {t.liveMap}
           </h3>
           <div className="flex items-center gap-4 text-xs flex-wrap">
             <div className="flex items-center gap-1">
               <div className="w-3 h-3 rounded-full bg-blue-500"></div>
-              <span className="text-gray-500 dark:text-gray-400">İş Konumu</span>
+              <span className="text-gray-500 dark:text-gray-400">{t.jobPoints}</span>
             </div>
             <div className="flex items-center gap-1">
               <div className="w-3 h-3 rounded-full bg-green-500"></div>
-              <span className="text-gray-500 dark:text-gray-400">Aktif Makine</span>
+              <span className="text-gray-500 dark:text-gray-400">{t.stats.active} {t.machines}</span>
             </div>
             <div className="flex items-center gap-1">
               <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
-              <span className="text-gray-500 dark:text-gray-400">Boşta</span>
+              <span className="text-gray-500 dark:text-gray-400">{t.stats.idle}</span>
             </div>
             <div className="flex items-center gap-1">
               <div className="w-3 h-3 rounded-full bg-red-500"></div>
-              <span className="text-gray-500 dark:text-gray-400">Bakımda</span>
+              <span className="text-gray-500 dark:text-gray-400">{t.stats.maintenance}</span>
             </div>
             <div className="flex items-center gap-1">
               <div className="w-3 h-3 rounded-full bg-purple-500"></div>
-              <span className="text-gray-500 dark:text-gray-400">Operatör ({operatorsWithLocation.length})</span>
+              <span className="text-gray-500 dark:text-gray-400">{t.operators} ({operatorsWithLocation.length})</span>
             </div>
           </div>
         </div>
@@ -446,7 +446,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ machines, checklists, jobs
                         job.status === 'In Progress' ? 'bg-blue-100 text-blue-800' :
                         job.status === 'Delayed' ? 'bg-orange-100 text-orange-800' : 'bg-green-100 text-green-800'
                       }`}>
-                        {job.status === 'In Progress' ? 'Devam Ediyor' : job.status === 'Delayed' ? 'Gecikmede' : 'Tamamlandı'}
+                        {job.status === 'In Progress' ? t.inProgress : job.status === 'Delayed' ? t.delayed : t.completed}
                       </span>
                       <span className="text-xs font-bold text-gray-600">{job.progress}%</span>
                     </div>
@@ -455,7 +455,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ machines, checklists, jobs
                     </div>
                     {job.assignedMachineIds.length > 0 && (
                       <p className="text-[10px] text-gray-400 mt-2">
-                        {job.assignedMachineIds.length} makine atandı
+                        {job.assignedMachineIds.length} {t.machinesAssigned}
                       </p>
                     )}
                   </div>
@@ -495,7 +495,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ machines, checklists, jobs
                         }`}>
                           {machine.status}
                         </span>
-                        <span className="text-xs font-mono text-gray-600">{machine.engineHours.toLocaleString()} saat</span>
+                        <span className="text-xs font-mono text-gray-600">{machine.engineHours.toLocaleString()} {t.stats.hours}</span>
                       </div>
                     </div>
                   </Popup>
@@ -524,7 +524,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ machines, checklists, jobs
                     )}
                     <div className="flex justify-between items-center mb-2">
                       <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-800">
-                        Operatör
+                        {t.operator}
                       </span>
                       <span className="text-[10px] text-gray-400">
                         {operator.locationUpdatedAt ? new Date(operator.locationUpdatedAt).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : '-'}
@@ -532,7 +532,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ machines, checklists, jobs
                     </div>
                     {operator.assignedMachines && operator.assignedMachines.length > 0 && (
                       <div className="border-t pt-2 mt-2">
-                        <p className="text-[10px] font-bold text-gray-600 mb-1">Atanan Makineler:</p>
+                        <p className="text-[10px] font-bold text-gray-600 mb-1">{t.assignedMachines}</p>
                         {operator.assignedMachines.map(machine => (
                           <div key={machine.id} className="flex items-center gap-1 text-[10px] text-gray-500">
                             <Navigation size={10} className={machine.status === 'active' ? 'text-green-500' : 'text-gray-400'} />
@@ -562,11 +562,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ machines, checklists, jobs
               <table className="w-full">
                   <thead className="text-left text-xs font-bold text-gray-400 uppercase bg-gray-50 dark:bg-slate-700">
                       <tr>
-                          <th className="px-4 py-2 rounded-l-lg">Proje Adı</th>
+                          <th className="px-4 py-2 rounded-l-lg">{t.table.projectName}</th>
                           <th className="px-4 py-2">{t.table.location}</th>
-                          <th className="px-4 py-2">İlerleme</th>
+                          <th className="px-4 py-2">{t.table.progress}</th>
                           <th className="px-4 py-2">{t.table.status}</th>
-                          <th className="px-4 py-2 rounded-r-lg">Atanan Makine</th>
+                          <th className="px-4 py-2 rounded-r-lg">{t.table.assignedMachine}</th>
                       </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100 dark:divide-slate-700 text-sm">
@@ -578,11 +578,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ machines, checklists, jobs
                                   <div className="w-full bg-gray-200 dark:bg-slate-600 rounded-full h-2.5">
                                       <div className={`h-2.5 rounded-full ${job.status === 'Delayed' ? 'bg-red-500' : 'bg-green-500'}`} style={{width: `${job.progress}%`}}></div>
                                   </div>
-                                  <span className="text-xs text-gray-500 dark:text-gray-400 mt-1 block">{job.progress}% Tamamlandı</span>
+                                  <span className="text-xs text-gray-500 dark:text-gray-400 mt-1 block">{job.progress}% {t.completed}</span>
                               </td>
                               <td className="px-4 py-3">
                                   <span className={`px-2 py-1 rounded text-xs font-bold ${job.status === 'In Progress' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' : job.status === 'Delayed' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200' : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'}`}>
-                                      {job.status === 'In Progress' ? 'Devam Ediyor' : job.status === 'Delayed' ? 'Gecikmede' : 'Tamamlandı'}
+                                      {job.status === 'In Progress' ? t.inProgress : job.status === 'Delayed' ? t.delayed : t.completed}
                                   </span>
                               </td>
                               <td className="px-4 py-3">
@@ -613,7 +613,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ machines, checklists, jobs
                     onChange={(e) => setChartFilterId(e.target.value)}
                     className="pl-8 pr-4 py-1.5 text-xs font-medium border border-gray-300 dark:border-slate-600 rounded-lg bg-gray-50 dark:bg-slate-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-smart-navy cursor-pointer"
                   >
-                      <option value="all">Tüm Filo Ortalaması</option>
+                      <option value="all">{t.allFleetAverage}</option>
                       {machines.map(m => (
                           <option key={m.id} value={m.id}>{m.brand} {m.model}</option>
                       ))}

@@ -45,9 +45,9 @@ export const FinanceModule: React.FC<FinanceModuleProps> = ({ invoices, machines
 
   const getStatusLabel = (status: string) => {
       switch(status) {
-          case 'Paid': return 'Ödendi';
-          case 'Pending': return 'Bekliyor';
-          case 'Overdue': return 'Gecikmiş';
+          case 'Paid': return t.statuses.paid;
+          case 'Pending': return t.statuses.pending;
+          case 'Overdue': return t.statuses.overdue;
           default: return status;
       }
   };
@@ -60,7 +60,7 @@ export const FinanceModule: React.FC<FinanceModuleProps> = ({ invoices, machines
       <!DOCTYPE html>
       <html>
       <head>
-        <title>Hesap Ekstresi - ${firmDetails.name}</title>
+        <title>${t.print.accountStatement} - ${firmDetails.name}</title>
         <style>
           body { font-family: Arial, sans-serif; padding: 40px; max-width: 800px; margin: 0 auto; }
           .header { text-align: center; border-bottom: 2px solid #1e3a5f; padding-bottom: 20px; margin-bottom: 30px; }
@@ -80,29 +80,29 @@ export const FinanceModule: React.FC<FinanceModuleProps> = ({ invoices, machines
       <body>
         <div class="header">
           <h1>SMARTOP</h1>
-          <p>Hesap Ekstresi</p>
+          <p>${t.print.accountStatement}</p>
         </div>
         <div class="info-section">
           <div class="info-box">
-            <strong>Firma:</strong> ${firmDetails.name}<br/>
-            <strong>Adres:</strong> ${firmDetails.address || 'Belirtilmemiş'}<br/>
-            <strong>Tel:</strong> ${firmDetails.phone || 'Belirtilmemiş'}
+            <strong>${t.print.company}:</strong> ${firmDetails.name}<br/>
+            <strong>${t.print.address}:</strong> ${firmDetails.address || t.print.notSpecified}<br/>
+            <strong>${t.print.phone}:</strong> ${firmDetails.phone || t.print.notSpecified}
           </div>
           <div class="info-box">
-            <strong>Tarih:</strong> ${new Date().toLocaleDateString('tr-TR')}<br/>
-            <strong>Aktif Makine:</strong> ${machineCount}<br/>
-            <strong>Aylık Tutar:</strong> ₺${monthlyTotal.toLocaleString()}
+            <strong>${t.print.date}:</strong> ${new Date().toLocaleDateString()}<br/>
+            <strong>${t.activeMachine}:</strong> ${machineCount}<br/>
+            <strong>${t.print.monthlyAmount}:</strong> ₺${monthlyTotal.toLocaleString()}
           </div>
         </div>
-        <h3>Fatura Geçmişi</h3>
+        <h3>${t.invoiceHistory}</h3>
         <table>
           <thead>
             <tr>
-              <th>Fatura No</th>
-              <th>Tarih</th>
-              <th>Açıklama</th>
-              <th>Tutar</th>
-              <th>Durum</th>
+              <th>${t.table.invoiceNo}</th>
+              <th>${t.table.date}</th>
+              <th>${t.table.desc}</th>
+              <th>${t.table.amount}</th>
+              <th>${t.table.status}</th>
             </tr>
           </thead>
           <tbody>
@@ -116,14 +116,14 @@ export const FinanceModule: React.FC<FinanceModuleProps> = ({ invoices, machines
               </tr>
             `).join('')}
             <tr class="total-row">
-              <td colspan="3">Toplam</td>
+              <td colspan="3">${t.print.total}</td>
               <td>₺${invoices.reduce((sum, inv) => sum + inv.amount, 0).toLocaleString()}</td>
               <td></td>
             </tr>
           </tbody>
         </table>
         <div class="footer">
-          <p>Bu belge ${new Date().toLocaleString('tr-TR')} tarihinde oluşturulmuştur.</p>
+          <p>${t.print.documentCreatedAt} ${new Date().toLocaleString()}</p>
           <p>Smartop Fleet Management System</p>
         </div>
       </body>
@@ -143,7 +143,7 @@ export const FinanceModule: React.FC<FinanceModuleProps> = ({ invoices, machines
       <!DOCTYPE html>
       <html>
       <head>
-        <title>Fatura #${invoice.id}</title>
+        <title>${t.table.invoiceNo} #${invoice.id}</title>
         <style>
           body { font-family: Arial, sans-serif; padding: 40px; max-width: 800px; margin: 0 auto; }
           .header { display: flex; justify-content: space-between; align-items: start; border-bottom: 2px solid #1e3a5f; padding-bottom: 20px; margin-bottom: 30px; }
@@ -168,20 +168,20 @@ export const FinanceModule: React.FC<FinanceModuleProps> = ({ invoices, machines
         <div class="header">
           <div class="logo">SMARTOP</div>
           <div class="invoice-info">
-            <h2>FATURA</h2>
+            <h2>${t.table.invoiceNo.toUpperCase()}</h2>
             <p>#${invoice.id}</p>
             <p>${invoice.date}</p>
           </div>
         </div>
         <div class="parties">
           <div class="party">
-            <h4>Gönderen</h4>
+            <h4>${t.print.sender}</h4>
             <strong>Smartop Teknoloji A.Ş.</strong><br/>
-            İstanbul, Türkiye<br/>
+            Istanbul, Turkey<br/>
             info@smartop.com.tr
           </div>
           <div class="party">
-            <h4>Alıcı</h4>
+            <h4>${t.print.recipient}</h4>
             <strong>${firmDetails.name}</strong><br/>
             ${firmDetails.address || ''}<br/>
             ${firmDetails.email || ''}
@@ -189,24 +189,24 @@ export const FinanceModule: React.FC<FinanceModuleProps> = ({ invoices, machines
         </div>
         <div class="details">
           <div class="details-row">
-            <span>Açıklama</span>
+            <span>${t.print.description}</span>
             <span>${invoice.description}</span>
           </div>
           <div class="details-row">
-            <span>Dönem</span>
+            <span>${t.print.period}</span>
             <span>${invoice.date}</span>
           </div>
           <div class="details-row">
-            <span>Durum</span>
+            <span>${t.table.status}</span>
             <span class="status status-${invoice.status.toLowerCase()}">${getStatusLabel(invoice.status)}</span>
           </div>
         </div>
         <div class="total">
-          Toplam: ₺${invoice.amount.toLocaleString()}
+          ${t.print.total}: ₺${invoice.amount.toLocaleString()}
         </div>
         <div class="footer">
-          <p>Bu fatura elektronik olarak oluşturulmuştur.</p>
-          <p>Smartop Fleet Management System | ${new Date().toLocaleString('tr-TR')}</p>
+          <p>${t.print.electronicInvoice}</p>
+          <p>Smartop Fleet Management System | ${new Date().toLocaleString()}</p>
         </div>
       </body>
       </html>
@@ -220,7 +220,7 @@ export const FinanceModule: React.FC<FinanceModuleProps> = ({ invoices, machines
   const handleUpdateCard = () => {
     // In a real app, this would call an API to update payment info
     if (cardDetails.number && cardDetails.expiry && cardDetails.cvv && cardDetails.name) {
-      alert('Kart bilgileri başarıyla güncellendi!');
+      alert(t.print.cardUpdated);
       setShowCardUpdateModal(false);
       setCardDetails({ number: '', expiry: '', cvv: '', name: '' });
     }
@@ -229,23 +229,23 @@ export const FinanceModule: React.FC<FinanceModuleProps> = ({ invoices, machines
   const paymentMethods = [
     {
       id: 'credit_card' as PaymentMethodType,
-      name: 'Kredi Kartı',
+      name: t.paymentMethods.creditCard,
       icon: CreditCard,
-      description: 'Otomatik aylık çekim',
+      description: t.paymentMethods.autoMonthly,
       details: '**** **** **** 4242'
     },
     {
       id: 'marketplace' as PaymentMethodType,
-      name: 'Hepsiburada / Trendyol',
+      name: t.paymentMethods.marketplace,
       icon: Store,
-      description: 'Market üzerinden ödeme',
-      details: 'Hesabınıza bağlı'
+      description: t.paymentMethods.marketplaceDesc,
+      details: t.paymentMethods.linkedAccount
     },
     {
       id: 'bank_transfer' as PaymentMethodType,
-      name: 'Havale/EFT',
+      name: t.paymentMethods.bankTransfer,
       icon: Building2,
-      description: 'Manuel banka transferi',
+      description: t.paymentMethods.manualTransfer,
       details: 'TR12 3456 7890 1234 5678 90'
     }
   ];
@@ -280,7 +280,7 @@ export const FinanceModule: React.FC<FinanceModuleProps> = ({ invoices, machines
               <h3 className="text-3xl font-bold mb-4">₺{monthlyTotal.toLocaleString()}</h3>
               <div className="flex items-center gap-2 text-sm text-blue-100 bg-white/10 px-3 py-1.5 rounded-lg w-fit">
                   <TrendingUp size={14} />
-                  <span>{machineCount} Aktif Makine</span>
+                  <span>{machineCount} {t.activeMachine}</span>
               </div>
           </div>
 
@@ -293,7 +293,7 @@ export const FinanceModule: React.FC<FinanceModuleProps> = ({ invoices, machines
                   <p className="text-gray-500 dark:text-gray-400 text-xs font-bold uppercase tracking-wider">{t.nextBilling}</p>
               </div>
               <h3 className="text-2xl font-bold text-smart-navy dark:text-white">{nextBillingDate}</h3>
-              <p className="text-sm text-gray-400 mt-1">Otomatik çekim yapılacaktır.</p>
+              <p className="text-sm text-gray-400 mt-1">{t.autoDebit}</p>
           </div>
 
            {/* Discount Status */}
@@ -305,12 +305,12 @@ export const FinanceModule: React.FC<FinanceModuleProps> = ({ invoices, machines
                   <p className="text-gray-500 dark:text-gray-400 text-xs font-bold uppercase tracking-wider">{t.discountStatus}</p>
               </div>
               <h3 className={`text-2xl font-bold ${discountActive ? 'text-green-700 dark:text-green-300' : 'text-gray-700 dark:text-gray-200'}`}>
-                  {discountActive ? '%10 Aktif' : '%0 Standart'}
+                  {discountActive ? t.discountActive : t.discountStandard}
               </h3>
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                  {discountActive 
-                    ? 'Hacim indirimi uygulanıyor.' 
-                    : `${discountThreshold - machineCount} makine daha eklerseniz %10 indirim kazanacaksınız.`}
+                  {discountActive
+                    ? t.volumeDiscount
+                    : `${discountThreshold - machineCount} ${t.earnDiscount}`}
               </p>
           </div>
       </div>
@@ -391,7 +391,7 @@ export const FinanceModule: React.FC<FinanceModuleProps> = ({ invoices, machines
                     onClick={() => setShowCardUpdateModal(true)}
                     className="w-full border border-gray-300 dark:border-slate-600 py-3 rounded-lg font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
                   >
-                      Kartı Güncelle
+                      {t.updateCard}
                   </button>
                 </>
               )}
@@ -401,24 +401,24 @@ export const FinanceModule: React.FC<FinanceModuleProps> = ({ invoices, machines
                 <div className="bg-blue-50 dark:bg-slate-700 rounded-xl p-4 border border-blue-200 dark:border-slate-600">
                   <h4 className="font-bold text-smart-navy dark:text-white mb-3 flex items-center gap-2">
                     <Building2 size={18} />
-                    Banka Hesap Bilgileri
+                    {t.bankInfo.title}
                   </h4>
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
-                      <span className="text-gray-500 dark:text-gray-400">Banka:</span>
+                      <span className="text-gray-500 dark:text-gray-400">{t.bankInfo.bank}:</span>
                       <span className="font-medium text-gray-700 dark:text-gray-200">Garanti BBVA</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-500 dark:text-gray-400">Hesap Adı:</span>
+                      <span className="text-gray-500 dark:text-gray-400">{t.bankInfo.accountName}:</span>
                       <span className="font-medium text-gray-700 dark:text-gray-200">Smartop Teknoloji A.Ş.</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-500 dark:text-gray-400">IBAN:</span>
+                      <span className="text-gray-500 dark:text-gray-400">{t.bankInfo.iban}:</span>
                       <span className="font-mono text-xs text-gray-700 dark:text-gray-200">TR12 3456 7890 1234 5678 90</span>
                     </div>
                   </div>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-3 bg-white dark:bg-slate-800 p-2 rounded">
-                    Açıklamaya firma adınızı ve fatura numaranızı yazmayı unutmayın.
+                    {t.bankInfo.note}
                   </p>
                 </div>
               )}
@@ -428,10 +428,10 @@ export const FinanceModule: React.FC<FinanceModuleProps> = ({ invoices, machines
                 <div className="bg-orange-50 dark:bg-slate-700 rounded-xl p-4 border border-orange-200 dark:border-slate-600">
                   <h4 className="font-bold text-smart-navy dark:text-white mb-3 flex items-center gap-2">
                     <Store size={18} />
-                    Market Ödeme Bilgileri
+                    {t.marketplaceInfo.title}
                   </h4>
                   <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">
-                    Hepsiburada veya Trendyol hesabınız üzerinden otomatik ödeme yapabilirsiniz.
+                    {t.marketplaceInfo.description}
                   </p>
                   <div className="flex gap-2">
                     <button className="flex-1 bg-orange-500 hover:bg-orange-600 text-white py-2 rounded-lg font-bold text-sm transition-colors">
@@ -442,7 +442,7 @@ export const FinanceModule: React.FC<FinanceModuleProps> = ({ invoices, machines
                     </button>
                   </div>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-3">
-                    Market hesabınıza bağlı kredi kartınızdan çekim yapılacaktır.
+                    {t.marketplaceInfo.note}
                   </p>
                 </div>
               )}
@@ -476,10 +476,10 @@ export const FinanceModule: React.FC<FinanceModuleProps> = ({ invoices, machines
                                       </span>
                                   </td>
                                   <td className="p-4 text-right">
-                                      <button 
+                                      <button
                                         onClick={() => handleDownloadInvoice(invoice)}
-                                        className="text-gray-400 hover:text-smart-navy dark:hover:text-white transition-colors" 
-                                        title="PDF İndir"
+                                        className="text-gray-400 hover:text-smart-navy dark:hover:text-white transition-colors"
+                                        title={t.downloadPDF}
                                       >
                                           <Download size={18} />
                                       </button>
@@ -499,13 +499,13 @@ export const FinanceModule: React.FC<FinanceModuleProps> = ({ invoices, machines
             <div className="bg-smart-navy dark:bg-black p-6 rounded-t-2xl">
               <h3 className="text-xl font-bold text-white flex items-center gap-2">
                 <CreditCard />
-                Kredi Kartı Güncelle
+                {t.modal.updateCard}
               </h3>
             </div>
 
             <div className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-bold text-smart-navy dark:text-white mb-2">Kart Numarası</label>
+                <label className="block text-sm font-bold text-smart-navy dark:text-white mb-2">{t.modal.cardNumber}</label>
                 <input
                   type="text"
                   value={cardDetails.number}
@@ -521,7 +521,7 @@ export const FinanceModule: React.FC<FinanceModuleProps> = ({ invoices, machines
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-bold text-smart-navy dark:text-white mb-2">Son Kullanma</label>
+                  <label className="block text-sm font-bold text-smart-navy dark:text-white mb-2">{t.modal.expiry}</label>
                   <input
                     type="text"
                     value={cardDetails.expiry}
@@ -537,7 +537,7 @@ export const FinanceModule: React.FC<FinanceModuleProps> = ({ invoices, machines
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-smart-navy dark:text-white mb-2">CVV</label>
+                  <label className="block text-sm font-bold text-smart-navy dark:text-white mb-2">{t.modal.cvv}</label>
                   <input
                     type="text"
                     value={cardDetails.cvv}
@@ -552,7 +552,7 @@ export const FinanceModule: React.FC<FinanceModuleProps> = ({ invoices, machines
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-smart-navy dark:text-white mb-2">Kart Üzerindeki İsim</label>
+                <label className="block text-sm font-bold text-smart-navy dark:text-white mb-2">{t.modal.cardName}</label>
                 <input
                   type="text"
                   value={cardDetails.name}
@@ -571,7 +571,7 @@ export const FinanceModule: React.FC<FinanceModuleProps> = ({ invoices, machines
                 }}
                 className="px-6 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-slate-700 rounded-lg font-medium transition-colors"
               >
-                İptal
+                {t.modal.cancel}
               </button>
               <button
                 onClick={handleUpdateCard}
@@ -579,7 +579,7 @@ export const FinanceModule: React.FC<FinanceModuleProps> = ({ invoices, machines
                 className="px-6 py-2 bg-smart-navy dark:bg-black text-white rounded-lg font-bold hover:bg-blue-900 dark:hover:bg-gray-700 flex items-center gap-2 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               >
                 <Check size={18} />
-                Kartı Kaydet
+                {t.modal.save}
               </button>
             </div>
           </div>

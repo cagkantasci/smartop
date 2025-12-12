@@ -14,7 +14,24 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import MapView, { Marker, PROVIDER_GOOGLE, Region } from 'react-native-maps';
+// Conditional import for react-native-maps (not supported on web)
+let MapView: any = null;
+let Marker: any = null;
+let PROVIDER_GOOGLE: any = null;
+
+if (Platform.OS !== 'web') {
+  const Maps = require('react-native-maps');
+  MapView = Maps.default;
+  Marker = Maps.Marker;
+  PROVIDER_GOOGLE = Maps.PROVIDER_GOOGLE;
+}
+
+type Region = {
+  latitude: number;
+  longitude: number;
+  latitudeDelta: number;
+  longitudeDelta: number;
+};
 import * as Location from 'expo-location';
 import { Card, StatusBadge, Button, Input } from '../../components/ui';
 import { jobsApi, machinesApi } from '../../services/api';
@@ -80,6 +97,83 @@ const DEFAULT_REGION = {
   longitude: 28.9784,
   latitudeDelta: 0.0922,
   longitudeDelta: 0.0421,
+};
+
+// Web Map Picker Component using Leaflet (only loaded on web)
+interface WebMapPickerProps {
+  selectedLocation: { latitude: number; longitude: number } | null;
+  onMapPress: (coordinate: { latitude: number; longitude: number }) => void;
+  currentRegion: Region;
+}
+
+const WebMapPicker: React.FC<WebMapPickerProps> = ({ selectedLocation, onMapPress, currentRegion }) => {
+  if (Platform.OS !== 'web') return null;
+
+  const { MapContainer, TileLayer, Marker, useMapEvents } = require('react-leaflet');
+  const L = require('leaflet');
+
+  // Fix Leaflet default marker icon
+  React.useEffect(() => {
+    delete (L.Icon.Default.prototype as any)._getIconUrl;
+    L.Icon.Default.mergeOptions({
+      iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+      iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+      shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+    });
+  }, []);
+
+  const MapClickHandler = () => {
+    useMapEvents({
+      click: (e: any) => {
+        onMapPress({ latitude: e.latlng.lat, longitude: e.latlng.lng });
+      },
+    });
+    return null;
+  };
+
+  const createIcon = (color: string) => {
+    return L.divIcon({
+      className: 'custom-marker',
+      html: `<div style="
+        background-color: ${color};
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        border: 3px solid white;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+      "></div>`,
+      iconSize: [24, 24],
+      iconAnchor: [12, 12],
+    });
+  };
+
+  return (
+    <div style={{ width: '100%', height: '100%' }}>
+      <link
+        rel="stylesheet"
+        href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"
+      />
+      <MapContainer
+        center={[currentRegion.latitude, currentRegion.longitude]}
+        zoom={14}
+        style={{ width: '100%', height: '100%' }}
+        scrollWheelZoom={true}
+      >
+        <TileLayer
+          attribution='&copy; Google Maps'
+          url="https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}"
+          subdomains={['mt0', 'mt1', 'mt2', 'mt3']}
+        />
+        <MapClickHandler />
+        {selectedLocation && (
+          <Marker
+            position={[selectedLocation.latitude, selectedLocation.longitude]}
+            icon={createIcon('#F59E0B')}
+          />
+        )}
+      </MapContainer>
+    </div>
+  );
 };
 
 export function JobsScreen() {
@@ -759,22 +853,30 @@ export function JobsScreen() {
           </View>
 
           <View style={styles.mapContainer}>
-            <MapView
-              ref={mapRef}
-              style={styles.map}
-              provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
-              initialRegion={currentRegion}
-              onPress={handleMapPress}
-              showsUserLocation
-              showsMyLocationButton
-            >
-              {selectedLocation && (
-                <Marker
-                  coordinate={selectedLocation}
-                  pinColor="#F59E0B"
-                />
-              )}
-            </MapView>
+            {Platform.OS === 'web' ? (
+              <WebMapPicker
+                selectedLocation={selectedLocation}
+                onMapPress={(coord) => setSelectedLocation(coord)}
+                currentRegion={currentRegion}
+              />
+            ) : MapView ? (
+              <MapView
+                ref={mapRef}
+                style={styles.map}
+                provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
+                initialRegion={currentRegion}
+                onPress={handleMapPress}
+                showsUserLocation
+                showsMyLocationButton
+              >
+                {selectedLocation && (
+                  <Marker
+                    coordinate={selectedLocation}
+                    pinColor="#F59E0B"
+                  />
+                )}
+              </MapView>
+            ) : null}
 
             {/* Instruction Overlay */}
             <View style={styles.mapInstructionContainer}>

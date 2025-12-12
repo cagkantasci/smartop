@@ -5,13 +5,17 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { CreateTemplateDto } from './dto/create-template.dto';
 import { CreateSubmissionDto } from './dto/create-submission.dto';
 import { ReviewSubmissionDto } from './dto/review-submission.dto';
 
 @Injectable()
 export class ChecklistsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private notificationsService: NotificationsService,
+  ) {}
 
   // Template methods
   async createTemplate(dto: CreateTemplateDto, organizationId: string, userId: string) {
@@ -159,6 +163,16 @@ export class ChecklistsService {
       },
     });
 
+    // Send push notification to managers
+    await this.notificationsService.notifyChecklistSubmitted({
+      id: submission.id,
+      organizationId,
+      operatorId,
+      machineId: dto.machineId,
+      operator: submission.operator,
+      machine: submission.machine,
+    });
+
     return submission;
   }
 
@@ -287,6 +301,19 @@ export class ChecklistsService {
         },
       },
     });
+
+    // Send push notification to operator about review result
+    if (updated.reviewer) {
+      await this.notificationsService.notifyChecklistReviewed({
+        id: updated.id,
+        organizationId,
+        operatorId: submission.operatorId,
+        status: dto.status,
+        reviewerNotes: dto.notes,
+        machine: updated.machine,
+        reviewer: updated.reviewer,
+      });
+    }
 
     return updated;
   }

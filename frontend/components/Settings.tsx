@@ -1,7 +1,17 @@
 
 import React, { useState, useEffect } from 'react';
-import { User, Building2, Bell, Lock, Save, Camera, Mail, Shield, Smartphone, Globe, Moon, Sun, Loader2, CheckCircle } from 'lucide-react';
+import { User as UserIcon, Building2, Bell, Lock, Save, Camera, Mail, Shield, Smartphone, Globe, Moon, Sun, Loader2, CheckCircle } from 'lucide-react';
 import { FirmDetails, Language, TranslationDictionary } from '../types';
+import { userService } from '../src/services/userService';
+
+interface UserProfile {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  jobTitle?: string;
+  role: 'admin' | 'manager' | 'operator';
+}
 
 interface SettingsProps {
   firmDetails: FirmDetails;
@@ -11,24 +21,40 @@ interface SettingsProps {
   language?: Language;
   setLanguage?: (lang: Language) => void;
   t: TranslationDictionary['settings'];
+  user?: UserProfile | null;
+  onUserUpdate?: (updates: Partial<UserProfile>) => void;
 }
 
 type TabType = 'profile' | 'company' | 'notifications' | 'security';
 
-export const Settings: React.FC<SettingsProps> = ({ firmDetails, updateFirmDetails, isDarkMode, toggleTheme, language, setLanguage, t }) => {
+export const Settings: React.FC<SettingsProps> = ({ firmDetails, updateFirmDetails, isDarkMode, toggleTheme, language, setLanguage, t, user, onUserUpdate }) => {
   const [activeTab, setActiveTab] = useState<TabType>('profile');
   const [isLoading, setIsLoading] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [show2FAModal, setShow2FAModal] = useState(false);
   const [is2FAEnabled, setIs2FAEnabled] = useState(false);
   const [verificationCode, setVerificationCode] = useState('');
+  const [saveError, setSaveError] = useState('');
 
-  // Form States
+  // Form States - initialized from user prop
   const [profileData, setProfileData] = useState({
-    fullName: 'Ahmet Yılmaz',
-    email: 'ahmet@kuzeyinsaat.com.tr',
-    title: 'Operasyon Müdürü'
+    firstName: user?.firstName || '',
+    lastName: user?.lastName || '',
+    email: user?.email || '',
+    jobTitle: user?.jobTitle || ''
   });
+
+  // Sync profile data when user prop changes
+  useEffect(() => {
+    if (user) {
+      setProfileData({
+        firstName: user.firstName || '',
+        lastName: user.lastName || '',
+        email: user.email || '',
+        jobTitle: user.jobTitle || ''
+      });
+    }
+  }, [user]);
 
   // Password change state
   const [passwordData, setPasswordData] = useState({
@@ -54,7 +80,7 @@ export const Settings: React.FC<SettingsProps> = ({ firmDetails, updateFirmDetai
     marketing: false
   });
 
-  const handleSave = () => {
+  const handleSave = async () => {
     // Validate password if on security tab
     if (activeTab === 'security' && passwordData.newPassword) {
       if (passwordData.newPassword !== passwordData.confirmPassword) {
@@ -73,22 +99,41 @@ export const Settings: React.FC<SettingsProps> = ({ firmDetails, updateFirmDetai
 
     setIsLoading(true);
     setPasswordError('');
+    setSaveError('');
 
-    // Simulate API Call
-    setTimeout(() => {
-      if (activeTab === 'company') {
+    try {
+      if (activeTab === 'profile' && user) {
+        // Call API to update user profile (email is read-only for security)
+        const updatedUser = await userService.update(user.id, {
+          firstName: profileData.firstName,
+          lastName: profileData.lastName,
+          jobTitle: profileData.jobTitle
+        });
+
+        // Update local state via callback
+        if (onUserUpdate) {
+          onUserUpdate({
+            firstName: updatedUser.firstName,
+            lastName: updatedUser.lastName,
+            jobTitle: updatedUser.jobTitle
+          });
+        }
+      } else if (activeTab === 'company') {
         updateFirmDetails(companyData);
-      }
-      // In a real app, profile, notifications and security would call respective APIs
-      // For now we just show success message
-      if (activeTab === 'security' && passwordData.newPassword) {
+      } else if (activeTab === 'security' && passwordData.newPassword) {
+        // TODO: Implement password change API
         // Clear password fields after successful change
         setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
       }
-      setIsLoading(false);
+
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 3000);
-    }, 1000);
+    } catch (error: any) {
+      console.error('Save error:', error);
+      setSaveError(error.response?.data?.message || 'Kaydetme sırasında bir hata oluştu');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handle2FAActivation = () => {
@@ -102,7 +147,7 @@ export const Settings: React.FC<SettingsProps> = ({ firmDetails, updateFirmDetai
   };
 
   const tabs = [
-    { id: 'profile', label: t.tabs.profile, icon: User },
+    { id: 'profile', label: t.tabs.profile, icon: UserIcon },
     { id: 'company', label: t.tabs.company, icon: Building2 },
     { id: 'notifications', label: t.tabs.notifications, icon: Bell },
     { id: 'security', label: t.tabs.security, icon: Lock },
@@ -116,7 +161,7 @@ export const Settings: React.FC<SettingsProps> = ({ firmDetails, updateFirmDetai
             <div className="flex items-center gap-6 pb-6 border-b border-gray-100 dark:border-slate-700">
               <div className="relative group cursor-pointer">
                 <div className="w-24 h-24 rounded-full bg-gray-200 dark:bg-slate-700 flex items-center justify-center overflow-hidden border-4 border-white dark:border-slate-800 shadow-lg">
-                  <User size={40} className="text-gray-400" />
+                  <UserIcon size={40} className="text-gray-400" />
                 </div>
                 <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                   <Camera className="text-white" size={24} />
@@ -128,34 +173,53 @@ export const Settings: React.FC<SettingsProps> = ({ firmDetails, updateFirmDetai
               </div>
             </div>
 
+            {saveError && (
+              <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-600 dark:text-red-400 text-sm mb-4">
+                {saveError}
+              </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-bold text-smart-navy dark:text-gray-300 mb-2">{t.labels.fullName}</label>
-                <input 
-                  type="text" 
-                  value={profileData.fullName}
-                  onChange={(e) => setProfileData({...profileData, fullName: e.target.value})}
+                <label className="block text-sm font-bold text-smart-navy dark:text-gray-300 mb-2">{language === 'en' ? 'First Name' : 'Ad'}</label>
+                <input
+                  type="text"
+                  value={profileData.firstName}
+                  onChange={(e) => setProfileData({...profileData, firstName: e.target.value})}
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-smart-navy/20 outline-none bg-white text-gray-900 dark:bg-slate-700 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-smart-navy dark:text-gray-300 mb-2">{language === 'en' ? 'Last Name' : 'Soyad'}</label>
+                <input
+                  type="text"
+                  value={profileData.lastName}
+                  onChange={(e) => setProfileData({...profileData, lastName: e.target.value})}
                   className="w-full px-4 py-3 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-smart-navy/20 outline-none bg-white text-gray-900 dark:bg-slate-700 dark:text-white"
                 />
               </div>
               <div>
                 <label className="block text-sm font-bold text-smart-navy dark:text-gray-300 mb-2">{t.labels.title}</label>
-                <input 
-                  type="text" 
-                  value={profileData.title}
-                  onChange={(e) => setProfileData({...profileData, title: e.target.value})}
+                <input
+                  type="text"
+                  value={profileData.jobTitle}
+                  onChange={(e) => setProfileData({...profileData, jobTitle: e.target.value})}
                   className="w-full px-4 py-3 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-smart-navy/20 outline-none bg-white text-gray-900 dark:bg-slate-700 dark:text-white"
                 />
               </div>
-              <div className="md:col-span-2">
-                <label className="block text-sm font-bold text-smart-navy dark:text-gray-300 mb-2">{t.labels.email}</label>
+              <div>
+                <label className="block text-sm font-bold text-smart-navy dark:text-gray-300 mb-2">
+                  {t.labels.email}
+                  <span className="ml-2 text-xs text-gray-400 font-normal">({language === 'en' ? 'Cannot be changed' : 'Değiştirilemez'})</span>
+                </label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                  <input 
-                    type="email" 
+                  <input
+                    type="email"
                     value={profileData.email}
-                    onChange={(e) => setProfileData({...profileData, email: e.target.value})}
-                    className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-smart-navy/20 outline-none bg-white text-gray-900 dark:bg-slate-700 dark:text-white"
+                    readOnly
+                    disabled
+                    className="w-full pl-10 pr-4 py-3 border border-gray-200 dark:border-slate-700 rounded-lg bg-gray-100 text-gray-500 dark:bg-slate-800 dark:text-gray-400 cursor-not-allowed"
                   />
                 </div>
               </div>
@@ -378,7 +442,7 @@ export const Settings: React.FC<SettingsProps> = ({ firmDetails, updateFirmDetai
       <div className="mb-8 flex justify-between items-center">
         <div>
            <h2 className="text-3xl font-bold text-smart-navy dark:text-white flex items-center gap-3">
-             <User className="text-smart-yellow" />
+             <UserIcon className="text-smart-yellow" />
              {t.title}
            </h2>
            <p className="text-gray-500 dark:text-gray-400 mt-1">{t.subtitle}</p>

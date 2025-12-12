@@ -12,7 +12,11 @@ export type NotificationType =
   | 'job_completed'
   | 'maintenance_due'
   | 'machine_issue'
-  | 'system';
+  | 'system'
+  | 'broadcast'
+  | 'payment'
+  | 'subscription'
+  | 'info';
 
 interface NotificationPayload {
   organizationId: string;
@@ -148,6 +152,12 @@ export class NotificationsService {
     });
   }
 
+  async getUnreadCount(userId: string): Promise<number> {
+    return this.prisma.notification.count({
+      where: { userId, isRead: false },
+    });
+  }
+
   // Specific notification helpers
   async notifyChecklistSubmitted(submission: {
     id: string;
@@ -263,5 +273,146 @@ export class NotificationsService {
       `${machine.name} makinesi için planlı bakım zamanı geldi.`,
       { machineId: machine.id },
     );
+  }
+
+  // Broadcast notification to all users or specific roles in organization
+  async broadcastNotification(params: {
+    organizationId: string;
+    type: NotificationType;
+    title: string;
+    body: string;
+    targetRoles?: ('admin' | 'manager' | 'operator')[];
+    targetUserIds?: string[];
+    sendEmail?: boolean;
+    sendPush?: boolean;
+  }) {
+    const { organizationId, type, title, body, targetRoles, targetUserIds, sendEmail, sendPush } = params;
+
+    let userIds: string[] = [];
+
+    if (targetUserIds && targetUserIds.length > 0) {
+      userIds = targetUserIds;
+    } else {
+      const whereClause: any = {
+        organizationId,
+        isActive: true,
+      };
+
+      if (targetRoles && targetRoles.length > 0) {
+        whereClause.role = { in: targetRoles };
+      }
+
+      const users = await this.prisma.user.findMany({
+        where: whereClause,
+        select: { id: true },
+      });
+      userIds = users.map((u) => u.id);
+    }
+
+    if (userIds.length === 0) {
+      return { sent: 0, message: 'No users found to send notification' };
+    }
+
+    // Create notifications in database
+    await this.prisma.notification.createMany({
+      data: userIds.map((userId) => ({
+        organizationId,
+        userId,
+        type,
+        title,
+        body,
+        data: { broadcast: true },
+      })),
+    });
+
+    // Send push notifications
+    if (sendPush !== false) {
+      await this.pushService.sendToUsers(userIds, {
+        title,
+        body,
+        data: { type, broadcast: 'true' },
+      });
+    }
+
+    // Send emails if requested
+    if (sendEmail) {
+      const users = await this.prisma.user.findMany({
+        where: { id: { in: userIds } },
+        select: { email: true, firstName: true, lastName: true },
+      });
+
+      for (const user of users) {
+        if (user.email) {
+          await this.emailService.sendNotificationEmail({
+            to: user.email,
+            subject: title,
+            template: 'notification',
+            context: {
+              userName: `${user.firstName} ${user.lastName}`,
+              title,
+              body,
+              type,
+            },
+          });
+        }
+      }
+    }
+
+    return { sent: userIds.length, message: `Notification sent to ${userIds.length} users` };
+  }
+
+  // Get all users in organization (for notification target selection)
+  async getOrganizationUsers(organizationId: string) {
+    return this.prisma.user.findMany({
+      where: {
+        organizationId,
+        isActive: true,
+      },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        role: true,
+      },
+      orderBy: { firstName: 'asc' },
+    });
+  }
+
+  // Get broadcast notification history
+  async getBroadcastHistory(organizationId: string, limit = 50, offset = 0) {
+    const broadcastTypes = ['broadcast', 'payment', 'subscription', 'info', 'system'];
+
+    // Get unique notifications by grouping by title, body, type, and createdAt (within same minute)
+    const notifications = await this.prisma.$queryRaw`
+      SELECT
+        MIN(id) as id,
+        type,
+        title,
+        body,
+        data,
+        MIN("createdAt") as "createdAt",
+        COUNT(*) as "recipientCount"
+      FROM "Notification"
+      WHERE "organizationId" = ${organizationId}
+        AND type IN ('broadcast', 'payment', 'subscription', 'info', 'system')
+        AND data::jsonb @> '{"broadcast": true}'
+      GROUP BY type, title, body, data, date_trunc('minute', "createdAt")
+      ORDER BY MIN("createdAt") DESC
+      LIMIT ${limit}
+      OFFSET ${offset}
+    `;
+
+    const total = await this.prisma.notification.count({
+      where: {
+        organizationId,
+        type: { in: broadcastTypes as NotificationType[] },
+      },
+    });
+
+    return {
+      notifications,
+      total,
+    };
   }
 }

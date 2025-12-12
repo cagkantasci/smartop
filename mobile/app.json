@@ -31,8 +31,20 @@
       "permissions": [
         "CAMERA",
         "ACCESS_FINE_LOCATION",
-        "ACCESS_COARSE_LOCATION"
-      ]
+        "ACCESS_COARSE_LOCATION",
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ],
+      "googleServicesFile": "./google-services.json",
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyBOMVLhs0Qd-jMrJFuv2s1Dt-H930hdX90"
+        }
+      }
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -40,7 +52,22 @@
     "plugins": [
       "expo-camera",
       "expo-location",
-      "expo-secure-store"
-    ]
+      "expo-secure-store",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#3B82F6",
+          "defaultChannel": "smartop_notifications",
+          "sounds": []
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "312447db-9e47-4485-97da-eac78e1cc4b0"
+      }
+    },
+    "owner": "smartop"
   }
 }

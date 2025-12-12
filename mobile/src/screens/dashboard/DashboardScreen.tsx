@@ -13,7 +13,19 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
-import MapView, { Marker, PROVIDER_GOOGLE, Callout } from 'react-native-maps';
+// Conditional import for react-native-maps (not supported on web)
+let MapView: any = null;
+let Marker: any = null;
+let PROVIDER_GOOGLE: any = null;
+let Callout: any = null;
+
+if (Platform.OS !== 'web') {
+  const Maps = require('react-native-maps');
+  MapView = Maps.default;
+  Marker = Maps.Marker;
+  PROVIDER_GOOGLE = Maps.PROVIDER_GOOGLE;
+  Callout = Maps.Callout;
+}
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useLanguage } from '../../context/LanguageContext';
@@ -40,6 +52,117 @@ const getStatusColor = (status: Machine['status']) => {
     case 'out_of_service': return '#6B7280';
     default: return '#6B7280';
   }
+};
+
+// Web Map Component using Leaflet (only loaded on web)
+interface WebMapViewProps {
+  machines: Machine[];
+  jobs: Job[];
+  getStatusColor: (status: Machine['status']) => string;
+  t: any;
+}
+
+const WebMapView: React.FC<WebMapViewProps> = ({ machines, jobs, getStatusColor, t }) => {
+  if (Platform.OS !== 'web') return null;
+
+  // Dynamic imports for web
+  const { MapContainer, TileLayer, Marker, Popup } = require('react-leaflet');
+  const L = require('leaflet');
+
+  // Fix Leaflet default marker icon
+  React.useEffect(() => {
+    delete (L.Icon.Default.prototype as any)._getIconUrl;
+    L.Icon.Default.mergeOptions({
+      iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+      iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+      shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+    });
+  }, []);
+
+  // Custom icon creator
+  const createIcon = (color: string) => {
+    return L.divIcon({
+      className: 'custom-marker',
+      html: `<div style="
+        background-color: ${color};
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        border: 3px solid white;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+      "></div>`,
+      iconSize: [20, 20],
+      iconAnchor: [10, 10],
+    });
+  };
+
+  return (
+    <div style={{ width: '100%', height: '100%' }}>
+      <link
+        rel="stylesheet"
+        href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"
+      />
+      <MapContainer
+        center={[DEFAULT_REGION.latitude, DEFAULT_REGION.longitude]}
+        zoom={12}
+        style={{ width: '100%', height: '100%', borderRadius: 12 }}
+        scrollWheelZoom={true}
+      >
+        <TileLayer
+          attribution='&copy; Google Maps'
+          url="https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}"
+          subdomains={['mt0', 'mt1', 'mt2', 'mt3']}
+        />
+        {machines.map((machine) => (
+          <Marker
+            key={`machine-${machine.id}`}
+            position={[Number(machine.locationLat), Number(machine.locationLng)]}
+            icon={createIcon(getStatusColor(machine.status))}
+          >
+            <Popup>
+              <div style={{ padding: 4, minWidth: 120 }}>
+                <strong style={{ color: '#1F2937' }}>{machine.name}</strong>
+                <p style={{ margin: '4px 0', color: '#6B7280', fontSize: 12 }}>
+                  {machine.brand} {machine.model}
+                </p>
+                <span style={{
+                  backgroundColor: `${getStatusColor(machine.status)}20`,
+                  color: getStatusColor(machine.status),
+                  padding: '2px 8px',
+                  borderRadius: 4,
+                  fontSize: 11,
+                  fontWeight: 600
+                }}>
+                  {machine.status === 'active' ? t.dashboard.map.active :
+                   machine.status === 'idle' ? t.dashboard.map.idle :
+                   machine.status === 'maintenance' ? t.dashboard.map.maintenance : t.dashboard.map.outOfService}
+                </span>
+              </div>
+            </Popup>
+          </Marker>
+        ))}
+        {jobs.map((job) => (
+          <Marker
+            key={`job-${job.id}`}
+            position={[Number(job.locationLat), Number(job.locationLng)]}
+            icon={createIcon('#F59E0B')}
+          >
+            <Popup>
+              <div style={{ padding: 4, minWidth: 120 }}>
+                <strong style={{ color: '#1F2937' }}>{job.title}</strong>
+                {job.locationName && (
+                  <p style={{ margin: '4px 0', color: '#6B7280', fontSize: 12 }}>{job.locationName}</p>
+                )}
+                <p style={{ margin: 0, color: '#3B82F6', fontSize: 12 }}>
+                  {t.dashboard.map.progress}: {job.progress || 0}%
+                </p>
+              </div>
+            </Popup>
+          </Marker>
+        ))}
+      </MapContainer>
+    </div>
+  );
 };
 
 type DashboardNavigationProp = BottomTabNavigationProp<MainTabParamList, 'Dashboard'>;
@@ -266,66 +389,75 @@ export function DashboardScreen() {
           {showMap && (
             <Card style={[styles.mapCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
               <View style={styles.mapContainer}>
-                <MapView
-                  ref={mapRef}
-                  style={styles.map}
-                  provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
-                  initialRegion={DEFAULT_REGION}
-                  showsUserLocation
-                  showsMyLocationButton={false}
-                >
-                  {/* Machine Markers */}
-                  {machinesWithLocation.map((machine) => (
-                    <Marker
-                      key={`machine-${machine.id}`}
-                      coordinate={{
-                        latitude: Number(machine.locationLat),
-                        longitude: Number(machine.locationLng),
-                      }}
-                      pinColor={getStatusColor(machine.status)}
-                    >
-                      <Callout>
-                        <View style={styles.calloutContainer}>
-                          <Text style={styles.calloutTitle}>{machine.name}</Text>
-                          <Text style={styles.calloutSubtitle}>
-                            {machine.brand} {machine.model}
-                          </Text>
-                          <View style={[styles.calloutStatus, { backgroundColor: `${getStatusColor(machine.status)}20` }]}>
-                            <Text style={[styles.calloutStatusText, { color: getStatusColor(machine.status) }]}>
-                              {machine.status === 'active' ? t.dashboard.map.active :
-                               machine.status === 'idle' ? t.dashboard.map.idle :
-                               machine.status === 'maintenance' ? t.dashboard.map.maintenance : t.dashboard.map.outOfService}
+                {Platform.OS === 'web' ? (
+                  <WebMapView
+                    machines={machinesWithLocation}
+                    jobs={jobsWithLocation}
+                    getStatusColor={getStatusColor}
+                    t={t}
+                  />
+                ) : MapView ? (
+                  <MapView
+                    ref={mapRef}
+                    style={styles.map}
+                    provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
+                    initialRegion={DEFAULT_REGION}
+                    showsUserLocation
+                    showsMyLocationButton={false}
+                  >
+                    {/* Machine Markers */}
+                    {machinesWithLocation.map((machine) => (
+                      <Marker
+                        key={`machine-${machine.id}`}
+                        coordinate={{
+                          latitude: Number(machine.locationLat),
+                          longitude: Number(machine.locationLng),
+                        }}
+                        pinColor={getStatusColor(machine.status)}
+                      >
+                        <Callout>
+                          <View style={styles.calloutContainer}>
+                            <Text style={styles.calloutTitle}>{machine.name}</Text>
+                            <Text style={styles.calloutSubtitle}>
+                              {machine.brand} {machine.model}
+                            </Text>
+                            <View style={[styles.calloutStatus, { backgroundColor: `${getStatusColor(machine.status)}20` }]}>
+                              <Text style={[styles.calloutStatusText, { color: getStatusColor(machine.status) }]}>
+                                {machine.status === 'active' ? t.dashboard.map.active :
+                                 machine.status === 'idle' ? t.dashboard.map.idle :
+                                 machine.status === 'maintenance' ? t.dashboard.map.maintenance : t.dashboard.map.outOfService}
+                              </Text>
+                            </View>
+                          </View>
+                        </Callout>
+                      </Marker>
+                    ))}
+
+                    {/* Job Markers */}
+                    {jobsWithLocation.map((job) => (
+                      <Marker
+                        key={`job-${job.id}`}
+                        coordinate={{
+                          latitude: Number(job.locationLat),
+                          longitude: Number(job.locationLng),
+                        }}
+                        pinColor="#F59E0B"
+                      >
+                        <Callout>
+                          <View style={styles.calloutContainer}>
+                            <Text style={styles.calloutTitle}>{job.title}</Text>
+                            {job.locationName && (
+                              <Text style={styles.calloutSubtitle}>{job.locationName}</Text>
+                            )}
+                            <Text style={styles.calloutProgress}>
+                              {t.dashboard.map.progress}: {job.progress || 0}%
                             </Text>
                           </View>
-                        </View>
-                      </Callout>
-                    </Marker>
-                  ))}
-
-                  {/* Job Markers */}
-                  {jobsWithLocation.map((job) => (
-                    <Marker
-                      key={`job-${job.id}`}
-                      coordinate={{
-                        latitude: Number(job.locationLat),
-                        longitude: Number(job.locationLng),
-                      }}
-                      pinColor="#F59E0B"
-                    >
-                      <Callout>
-                        <View style={styles.calloutContainer}>
-                          <Text style={styles.calloutTitle}>{job.title}</Text>
-                          {job.locationName && (
-                            <Text style={styles.calloutSubtitle}>{job.locationName}</Text>
-                          )}
-                          <Text style={styles.calloutProgress}>
-                            {t.dashboard.map.progress}: {job.progress || 0}%
-                          </Text>
-                        </View>
-                      </Callout>
-                    </Marker>
-                  ))}
-                </MapView>
+                        </Callout>
+                      </Marker>
+                    ))}
+                  </MapView>
+                ) : null}
 
                 {/* Map Legend */}
                 <View style={[styles.mapLegend, { backgroundColor: colors.card }]}>

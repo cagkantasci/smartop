@@ -4,11 +4,15 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { CreateJobDto } from './dto/create-job.dto';
 
 @Injectable()
 export class JobsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private notificationsService: NotificationsService,
+  ) {}
 
   async create(dto: CreateJobDto, organizationId: string, userId: string) {
     const { machineIds, operatorIds, ...jobData } = dto;
@@ -47,6 +51,19 @@ export class JobsService {
         data: assignments,
         skipDuplicates: true,
       });
+
+      // Send push notifications to assigned operators
+      if (operatorIds?.length) {
+        await this.notificationsService.notifyJobAssigned(
+          {
+            id: job.id,
+            organizationId,
+            title: jobData.title,
+            description: jobData.description,
+          },
+          operatorIds,
+        );
+      }
     }
 
     return this.findOne(job.id, organizationId);
@@ -171,9 +188,19 @@ export class JobsService {
     return { message: 'Job deleted successfully' };
   }
 
-  async startJob(id: string, organizationId: string) {
+  async startJob(id: string, organizationId: string, userId: string) {
     const job = await this.prisma.job.findFirst({
       where: { id, organizationId },
+      include: {
+        jobAssignments: {
+          where: { operatorId: { not: null } },
+          include: {
+            operator: {
+              select: { id: true, firstName: true, lastName: true },
+            },
+          },
+        },
+      },
     });
 
     if (!job) {
@@ -191,6 +218,27 @@ export class JobsService {
         actualStart: new Date(),
       },
     });
+
+    // Send push notification to managers about job start
+    const managers = await this.prisma.user.findMany({
+      where: { organizationId, role: { in: ['admin', 'manager'] }, isActive: true },
+      select: { id: true },
+    });
+
+    const operator = job.jobAssignments.find(a => a.operator)?.operator;
+    const operatorName = operator ? `${operator.firstName} ${operator.lastName}` : 'Operatör';
+
+    if (managers.length > 0) {
+      const managerIds = managers.map(m => m.id);
+      await this.notificationsService.createBulk(
+        organizationId,
+        managerIds,
+        'job_started',
+        'İş Başladı',
+        `"${job.title}" işi ${operatorName} tarafından başlatıldı.`,
+        { jobId: id },
+      );
+    }
 
     return updated;
   }
@@ -221,6 +269,24 @@ export class JobsService {
         actualHours,
       },
     });
+
+    // Send push notification to managers about job completion
+    const managers = await this.prisma.user.findMany({
+      where: { organizationId, role: { in: ['admin', 'manager'] }, isActive: true },
+      select: { id: true },
+    });
+
+    if (managers.length > 0) {
+      const managerIds = managers.map(m => m.id);
+      await this.notificationsService.createBulk(
+        organizationId,
+        managerIds,
+        'job_completed',
+        'İş Tamamlandı',
+        `"${job.title}" işi başarıyla tamamlandı.`,
+        { jobId: id },
+      );
+    }
 
     return updated;
   }

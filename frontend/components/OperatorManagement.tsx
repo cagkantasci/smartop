@@ -154,9 +154,9 @@ export const OperatorManagement: React.FC<OperatorManagementProps> = ({ operator
        {/* Search */}
        <div className="relative mb-8">
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
-        <input 
-          type="text" 
-          placeholder="İsim veya uzmanlık ara..."
+        <input
+          type="text"
+          placeholder={t.searchPlaceholder}
           className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-smart-navy/20 dark:focus:ring-gray-500/20"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
@@ -174,7 +174,7 @@ export const OperatorManagement: React.FC<OperatorManagementProps> = ({ operator
                 <button
                     onClick={(e) => { e.stopPropagation(); openDeleteConfirm(op); }}
                     className="p-2 bg-gray-100 dark:bg-slate-700 hover:bg-red-100 dark:hover:bg-red-900/30 text-gray-500 hover:text-red-600 rounded-lg transition-colors"
-                    title="Sil"
+                    title={t.deleteButton}
                 >
                     <Trash2 size={16} />
                 </button>
@@ -191,14 +191,14 @@ export const OperatorManagement: React.FC<OperatorManagementProps> = ({ operator
                             {getSpecialtyLabel(spec)}
                         </span>
                     ))}
-                    {op.specialty.length === 0 && <span className="text-xs text-gray-400 italic">Uzmanlık Yok</span>}
+                    {op.specialty.length === 0 && <span className="text-xs text-gray-400 italic">{t.noSpecialty}</span>}
                 </div>
              </div>
 
              <div className="space-y-3 pt-4 border-t border-gray-100 dark:border-slate-700">
                 <div className="text-sm text-gray-600 dark:text-gray-300">
                     <div className="flex items-center gap-2 mb-2 text-gray-400 text-xs font-bold uppercase">
-                        <FileBadge size={12} /> Belgeler
+                        <FileBadge size={12} /> {t.licenses}
                     </div>
                     <div className="flex flex-wrap gap-1">
                         {op.licenseType.map((lic, idx) => (
@@ -253,7 +253,7 @@ export const OperatorManagement: React.FC<OperatorManagementProps> = ({ operator
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                            <label className="block text-sm font-bold text-smart-navy dark:text-gray-300 mb-2">{t.form.license} (Çoklu Seçim)</label>
+                            <label className="block text-sm font-bold text-smart-navy dark:text-gray-300 mb-2">{t.form.license} {t.multiSelect}</label>
                             <div className="flex flex-wrap gap-2 bg-gray-50 dark:bg-slate-900 p-3 rounded-xl border border-gray-200 dark:border-slate-700 max-h-48 overflow-y-auto custom-scrollbar">
                                 {LICENSE_OPTIONS.map(opt => {
                                     const isSelected = formData.licenseType?.includes(opt);
@@ -276,7 +276,7 @@ export const OperatorManagement: React.FC<OperatorManagementProps> = ({ operator
                             </div>
                         </div>
                         <div>
-                            <label className="block text-sm font-bold text-smart-navy dark:text-gray-300 mb-2">{t.form.specialty} (Çoklu Seçim)</label>
+                            <label className="block text-sm font-bold text-smart-navy dark:text-gray-300 mb-2">{t.form.specialty} {t.multiSelect}</label>
                             <div className="flex flex-wrap gap-2 bg-gray-50 dark:bg-slate-900 p-3 rounded-xl border border-gray-200 dark:border-slate-700 max-h-48 overflow-y-auto custom-scrollbar">
                                 {SPECIALTY_OPTIONS.map(opt => {
                                     const isSelected = isSpecialtySelected(formData.specialty || [], opt.value);
@@ -353,7 +353,7 @@ export const OperatorManagement: React.FC<OperatorManagementProps> = ({ operator
                 <AlertTriangle size={32} className="text-red-600 dark:text-red-400" />
               </div>
               <h3 className="text-xl font-bold text-center text-smart-navy dark:text-white mb-2">
-                Operatörü Silmek İstediğinize Emin Misiniz?
+                {t.deleteConfirmTitle}
               </h3>
               <div className="flex flex-col items-center mb-4">
                 <img src={operatorToDelete.avatar} alt={operatorToDelete.name} className="w-16 h-16 rounded-full border-2 border-gray-200 dark:border-slate-600 mb-2" />
@@ -361,7 +361,7 @@ export const OperatorManagement: React.FC<OperatorManagementProps> = ({ operator
                 <p className="text-sm text-gray-500 dark:text-gray-400">{operatorToDelete.email}</p>
               </div>
               <p className="text-center text-sm text-red-500 dark:text-red-400">
-                Bu işlem geri alınamaz. Operatör ve tüm ilişkili veriler kalıcı olarak silinecektir.
+                {t.deleteWarning}
               </p>
             </div>
             <div className="p-6 border-t border-gray-100 dark:border-slate-700 flex gap-3">
@@ -369,14 +369,14 @@ export const OperatorManagement: React.FC<OperatorManagementProps> = ({ operator
                 onClick={() => { setIsDeleteConfirmOpen(false); setOperatorToDelete(null); }}
                 className="flex-1 px-6 py-3 rounded-lg font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
               >
-                İptal
+                {t.form.cancel}
               </button>
               <button
                 onClick={handleDelete}
                 className="flex-1 px-6 py-3 rounded-lg font-bold bg-red-600 text-white hover:bg-red-700 transition-colors flex items-center justify-center gap-2"
               >
                 <Trash2 size={18} />
-                Evet, Sil
+                {t.confirmDelete}
               </button>
             </div>
           </div>

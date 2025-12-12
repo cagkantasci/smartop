@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { authApi, tokenStorage } from '../services/api';
+import { pushNotificationService } from '../services/pushNotifications';
 import { User } from '../types';
 
 interface AuthContextType {
@@ -20,10 +21,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const isAuthenticated = !!user;
 
+  // Initialize push notifications on mount
+  useEffect(() => {
+    initializePushNotifications();
+  }, []);
+
   // Check for existing session on app start
   useEffect(() => {
     checkAuthStatus();
   }, []);
+
+  // Register device when user logs in
+  useEffect(() => {
+    if (user) {
+      registerDeviceForPushNotifications();
+    }
+  }, [user]);
+
+  const initializePushNotifications = async () => {
+    try {
+      await pushNotificationService.init();
+      console.log('Push notifications initialized');
+    } catch (error) {
+      console.error('Failed to initialize push notifications:', error);
+    }
+  };
+
+  const registerDeviceForPushNotifications = async () => {
+    try {
+      // Check if device is already registered
+      const isRegistered = await pushNotificationService.isDeviceRegistered();
+      if (!isRegistered && pushNotificationService.hasToken()) {
+        const success = await pushNotificationService.registerDeviceWithServer();
+        if (success) {
+          console.log('Device registered for push notifications');
+        }
+      }
+    } catch (error) {
+      console.error('Failed to register device for push:', error);
+    }
+  };
 
   const checkAuthStatus = async () => {
     try {
@@ -46,6 +83,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const response = await authApi.login(email, password);
       await tokenStorage.setTokens(response.accessToken, response.refreshToken);
       setUser(response.user);
+
+      // Register device for push notifications after successful login
+      setTimeout(async () => {
+        if (pushNotificationService.hasToken()) {
+          await pushNotificationService.registerDeviceWithServer();
+        }
+      }, 1000);
     } finally {
       setIsLoading(false);
     }
@@ -54,6 +98,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     setIsLoading(true);
     try {
+      // Unregister device from push notifications before logout
+      await pushNotificationService.unregisterDeviceFromServer();
+
       await authApi.logout();
     } catch (error) {
       console.log('Logout error:', error);

@@ -17,6 +17,7 @@ interface AuthContextType {
   }) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
+  updateUser: (updates: Partial<User>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -115,6 +116,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, []);
 
+  const updateUser = useCallback((updates: Partial<User>) => {
+    setUser((prev) => prev ? { ...prev, ...updates } : null);
+  }, []);
+
   const value: AuthContextType = {
     user,
     organization,
@@ -124,6 +129,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     register,
     logout,
     refreshUser,
+    updateUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

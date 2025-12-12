@@ -4,14 +4,23 @@ import { Check, X, AlertOctagon, User, Clock, FileText, Eye, Camera, CheckCircle
 import { ChecklistItem, ChecklistStatus, TranslationDictionary, Machine } from '../types';
 
 // Default translations for when t prop is not provided
-const DEFAULT_TRANSLATIONS = {
+const DEFAULT_TRANSLATIONS: TranslationDictionary['approvals'] = {
   title: 'Onay Kuyruğu',
   subtitle: 'Operatörlerden gelen günlük kontrol formlarını inceleyin.',
   empty: 'Her Şey Güncel!',
   approve: 'Onayla',
   reject: 'Reddet',
   review: 'İncele',
-  queue: 'Ön Kontrol'
+  queue: 'Ön Kontrol',
+  reportedIssues: 'Raporlanan Sorunlar',
+  allSystemsNormal: 'Tüm sistemler normal raporlandı.',
+  checklistDetail: 'Kontrol Listesi Detayı',
+  machine: 'Makine',
+  checklistItems: 'Kontrol Maddeleri',
+  issueReported: 'Sorun Bildirildi.',
+  operatorPhoto: 'Operatör Fotoğrafı:',
+  noDetailData: 'Detaylı liste verisi bulunamadı.',
+  operatorNote: 'Operatör Notu'
 };
 
 interface ApprovalWorkflowProps {
@@ -90,7 +99,7 @@ export const ApprovalWorkflow: React.FC<ApprovalWorkflowProps> = ({ checklists, 
                   <div className="bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800 rounded-lg p-4 mb-4">
                     <h4 className="text-red-800 dark:text-red-300 font-bold text-sm mb-2 flex items-center gap-2">
                       <AlertOctagon size={16} />
-                      Raporlanan Sorunlar ({item.issues.length}):
+                      {t.reportedIssues} ({item.issues.length}):
                     </h4>
                     <ul className="list-disc list-inside text-sm text-red-700 dark:text-red-200 font-medium">
                       {item.issues.map((issue, idx) => (
@@ -101,7 +110,7 @@ export const ApprovalWorkflow: React.FC<ApprovalWorkflowProps> = ({ checklists, 
                 ) : (
                   <div className="bg-green-50 dark:bg-green-900/20 border border-green-100 dark:border-green-800 rounded-lg p-3 mb-4 text-green-800 dark:text-green-300 text-sm flex items-center gap-2 font-medium">
                     <CheckCircle size={16} />
-                    Tüm sistemler normal raporlandı.
+                    {t.allSystemsNormal}
                   </div>
                 )}
               </div>
@@ -143,7 +152,7 @@ export const ApprovalWorkflow: React.FC<ApprovalWorkflowProps> = ({ checklists, 
                       <div>
                           <h3 className="text-xl font-bold text-white flex items-center gap-2">
                               <FileText />
-                              Kontrol Listesi Detayı
+                              {t.checklistDetail}
                           </h3>
                           <p className="text-blue-200 text-sm mt-1">{selectedChecklist.date} • {selectedChecklist.operatorName}</p>
                       </div>
@@ -155,13 +164,13 @@ export const ApprovalWorkflow: React.FC<ApprovalWorkflowProps> = ({ checklists, 
                   {/* Modal Body */}
                   <div className="p-6 overflow-y-auto flex-1 bg-gray-50 dark:bg-slate-900">
                       <div className="mb-6 bg-white dark:bg-slate-800 p-4 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm">
-                          <p className="text-xs text-gray-500 dark:text-gray-400 uppercase font-bold mb-1">Makine</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 uppercase font-bold mb-1">{t.machine}</p>
                           <p className="text-lg font-bold text-smart-navy dark:text-white">{getMachineName(selectedChecklist.machineId)}</p>
                       </div>
 
                       <h4 className="font-bold text-smart-navy dark:text-white mb-4 flex items-center gap-2">
                           <CheckCircle size={18} />
-                          Kontrol Maddeleri
+                          {t.checklistItems}
                       </h4>
 
                       <div className="space-y-3">
@@ -181,12 +190,12 @@ export const ApprovalWorkflow: React.FC<ApprovalWorkflowProps> = ({ checklists, 
                                           </div>
                                           {!entry.isOk && (
                                               <div className="mt-2 text-sm text-red-600 dark:text-red-300 font-medium">
-                                                  Sorun Bildirildi.
+                                                  {t.issueReported}
                                               </div>
                                           )}
                                           {entry.photoUrl && (
                                               <div className="mt-3">
-                                                  <p className="text-xs text-gray-400 flex items-center gap-1 mb-1"><Camera size={12}/> Operatör Fotoğrafı:</p>
+                                                  <p className="text-xs text-gray-400 flex items-center gap-1 mb-1"><Camera size={12}/> {t.operatorPhoto}</p>
                                                   <img src={entry.photoUrl} alt="Issue" className="w-32 h-32 object-cover rounded-lg border border-gray-300 shadow-sm cursor-pointer hover:scale-105 transition-transform" />
                                               </div>
                                           )}
@@ -194,13 +203,13 @@ export const ApprovalWorkflow: React.FC<ApprovalWorkflowProps> = ({ checklists, 
                                   </div>
                               ))
                           ) : (
-                              <p className="text-gray-400 italic text-center py-4">Detaylı liste verisi bulunamadı.</p>
+                              <p className="text-gray-400 italic text-center py-4">{t.noDetailData}</p>
                           )}
                       </div>
 
                       {selectedChecklist.notes && (
                           <div className="mt-6 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 p-4 rounded-lg">
-                              <p className="text-xs text-yellow-800 dark:text-yellow-400 uppercase font-bold mb-1">Operatör Notu</p>
+                              <p className="text-xs text-yellow-800 dark:text-yellow-400 uppercase font-bold mb-1">{t.operatorNote}</p>
                               <p className="text-sm text-gray-700 dark:text-gray-300 italic">"{selectedChecklist.notes}"</p>
                           </div>
                       )}

@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { LayoutDashboard, Truck, CheckSquare, Settings, LogOut, Building2, Phone, Briefcase, Wallet, ClipboardList, Sun, Moon, Users } from 'lucide-react';
+import { LayoutDashboard, Truck, CheckSquare, Settings, LogOut, Building2, Phone, Briefcase, Wallet, ClipboardList, Sun, Moon, Users, Bell } from 'lucide-react';
 import { Language, TranslationDictionary } from '../types';
 
 interface SidebarProps {
@@ -34,16 +34,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const t = translations;
 
-  const menuItems = [
-    { id: 'dashboard', label: t.dashboard, icon: LayoutDashboard },
-    { id: 'machines', label: t.machines, icon: Truck },
-    { id: 'operators', label: t.operators, icon: Users },
-    { id: 'jobs', label: t.jobs, icon: Briefcase },
-    { id: 'checklists', label: t.checklists, icon: ClipboardList },
-    { id: 'approvals', label: t.approvals, icon: CheckSquare },
-    { id: 'finance', label: t.finance, icon: Wallet },
-    { id: 'settings', label: t.settings, icon: Settings },
+  // All menu items with role-based access control
+  const allMenuItems = [
+    { id: 'dashboard', label: t.dashboard, icon: LayoutDashboard, roles: ['admin', 'manager', 'operator'] },
+    { id: 'machines', label: t.machines, icon: Truck, roles: ['admin', 'manager'] },
+    { id: 'operators', label: t.operators, icon: Users, roles: ['admin', 'manager'] },
+    { id: 'jobs', label: t.jobs, icon: Briefcase, roles: ['admin', 'manager', 'operator'] },
+    { id: 'checklists', label: t.checklists, icon: ClipboardList, roles: ['admin', 'manager', 'operator'] },
+    { id: 'approvals', label: t.approvals, icon: CheckSquare, roles: ['admin', 'manager'] },
+    { id: 'notifications', label: t.notifications || (language === 'en' ? 'Notifications' : 'Bildirimler'), icon: Bell, roles: ['admin', 'manager'] },
+    { id: 'finance', label: t.finance, icon: Wallet, roles: ['admin'] },
+    { id: 'settings', label: t.settings, icon: Settings, roles: ['admin', 'manager'] },
   ];
+
+  // Filter menu items based on user role
+  const menuItems = allMenuItems.filter(item =>
+    !userRole || item.roles.includes(userRole)
+  );
 
   return (
     <div className="w-64 h-screen bg-smart-navy dark:bg-black text-white flex flex-col fixed left-0 top-0 z-10 shadow-xl border-r border-yellow-500/20">

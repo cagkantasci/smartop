@@ -3,14 +3,16 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, CheckCircle, TrendingUp, Shield, Smartphone, ArrowRight, Activity, Zap, BarChart3, Globe, X, Loader2, AlertCircle, Mail, Building2, User, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../src/contexts/AuthContext';
+import { TranslationDictionary } from '../types';
 
 interface LandingPageProps {
   onLogin?: () => void;
+  t: TranslationDictionary['landing'];
 }
 
 type AuthMode = 'login' | 'register' | 'forgot-password';
 
-export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
+export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, t }) => {
   const { login, register, isLoading } = useAuth();
   const [machineCount, setMachineCount] = useState(15);
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -46,7 +48,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
       setShowLoginModal(false);
       if (onLogin) onLogin();
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Giriş başarısız. Lütfen bilgilerinizi kontrol edin.');
+      setError(err.response?.data?.message || t.auth.errors.loginFailed);
     }
   };
 
@@ -57,11 +59,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
 
     // Validation
     if (registerData.password !== registerData.confirmPassword) {
-      setError('Şifreler eşleşmiyor.');
+      setError(t.auth.errors.passwordMismatch);
       return;
     }
     if (registerData.password.length < 8) {
-      setError('Şifre en az 8 karakter olmalıdır.');
+      setError(t.auth.errors.passwordTooShort);
       return;
     }
 
@@ -73,7 +75,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
         lastName: registerData.lastName,
         organizationName: registerData.organizationName
       });
-      setSuccessMessage('Kayıt başarılı! Giriş yapabilirsiniz.');
+      setSuccessMessage(t.auth.success.registerSuccess);
       setAuthMode('login');
       setEmail(registerData.email);
       setRegisterData({
@@ -85,7 +87,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
         confirmPassword: ''
       });
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Kayıt başarısız. Lütfen tekrar deneyin.');
+      setError(err.response?.data?.message || t.auth.errors.registerFailed);
     }
   };
 
@@ -95,12 +97,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
     setSuccessMessage('');
 
     if (!email) {
-      setError('Lütfen e-posta adresinizi girin.');
+      setError(t.auth.errors.emailRequired);
       return;
     }
 
     // Simulate sending reset email
-    setSuccessMessage('Şifre sıfırlama bağlantısı e-posta adresinize gönderildi.');
+    setSuccessMessage(t.auth.success.resetLinkSent);
     setTimeout(() => {
       setAuthMode('login');
       setSuccessMessage('');
@@ -109,7 +111,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
 
   const handleGoogleLogin = () => {
     // Google OAuth implementation placeholder
-    setError('Google ile giriş yakında aktif olacak.');
+    setError(t.auth.errors.googleSoon);
   };
 
   const openLoginModal = () => {
@@ -122,12 +124,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
     if (rememberedEmail) {
       setEmail(rememberedEmail);
       setRememberMe(true);
-      setPassword('');
-    } else {
-      // Pre-fill with demo credentials
-      setEmail('admin@smartop.com.tr');
-      setPassword('Admin123!');
     }
+    setPassword('');
   };
 
   const closeLoginModal = () => {
@@ -151,15 +149,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
             <img src="/smartop-white.png" alt="Smartop" className="h-10 w-auto" />
           </div>
           <div className="hidden md:flex gap-8 text-sm font-medium text-gray-300">
-            <a href="#features" className="hover:text-white transition-colors">Özellikler</a>
-            <a href="#roi" className="hover:text-white transition-colors">Hesaplama</a>
-            <a href="#pricing" className="hover:text-white transition-colors">Fiyatlandırma</a>
+            <a href="#features" className="hover:text-white transition-colors">{t.nav.features}</a>
+            <a href="#roi" className="hover:text-white transition-colors">{t.nav.calculator}</a>
+            <a href="#pricing" className="hover:text-white transition-colors">{t.nav.pricing}</a>
           </div>
           <button
             onClick={openLoginModal}
             className="bg-white/10 hover:bg-white/20 border border-white/20 text-white px-6 py-2 rounded-full font-bold transition-all flex items-center gap-2"
           >
-            Portal Girişi <ArrowRight size={16} />
+            {t.nav.portalLogin} <ArrowRight size={16} />
           </button>
         </div>
       </nav>
@@ -177,25 +175,24 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
             transition={{ duration: 0.8 }}
           >
             <span className="inline-block px-4 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-sm font-bold mb-6">
-              🚀 İş Makineleri Yönetiminde Yeni Çağ
+              {t.hero.badge}
             </span>
             <h1 className="text-5xl md:text-7xl font-black tracking-tight mb-8 leading-tight">
-              Saha Operasyonlarını <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-smart-yellow to-orange-500">Dijitalleştirin.</span>
+              {t.hero.title} <br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-smart-yellow to-orange-500">{t.hero.titleHighlight}</span>
             </h1>
             <p className="text-xl text-gray-400 max-w-2xl mx-auto mb-10 leading-relaxed">
-              Kağıt formlardan kurtulun. Ekskavatör, vinç ve kamyonlarınızı cebinizden yönetin. 
-              Arızaları %40 azaltın, verimliliği artırın.
+              {t.hero.subtitle}
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
               <button
                 onClick={openLoginModal}
                 className="bg-smart-yellow text-smart-navy px-8 py-4 rounded-xl font-bold text-lg hover:bg-yellow-400 hover:scale-105 transition-all shadow-xl shadow-yellow-500/20 flex items-center gap-2"
               >
-                Ücretsiz Başlayın <ChevronRight />
+                {t.hero.startFree} <ChevronRight />
               </button>
               <button className="px-8 py-4 rounded-xl font-bold text-lg text-white hover:bg-white/5 border border-white/10 transition-all">
-                Demo Talep Et
+                {t.hero.requestDemo}
               </button>
             </div>
           </motion.div>
@@ -222,42 +219,42 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
         <div className="max-w-7xl mx-auto px-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
             <div>
-              <h2 className="text-3xl md:text-4xl font-bold mb-6">Ne Kadar Tasarruf Edersiniz?</h2>
+              <h2 className="text-3xl md:text-4xl font-bold mb-6">{t.roi.title}</h2>
               <p className="text-gray-400 mb-8">
-                Makine sayınıza göre aylık operasyonel kayıpları ve Smartop ile kazanacağınız net tasarrufu hesaplayın.
+                {t.roi.subtitle}
               </p>
-              
+
               <div className="bg-slate-900 p-8 rounded-2xl border border-white/10 shadow-lg">
-                <label className="block text-sm font-bold text-gray-400 mb-4">Filodaki Makine Sayısı: <span className="text-white text-xl ml-2">{machineCount}</span></label>
-                <input 
-                  type="range" 
-                  min="1" 
-                  max="100" 
-                  value={machineCount} 
+                <label className="block text-sm font-bold text-gray-400 mb-4">{t.roi.machineCount} <span className="text-white text-xl ml-2">{machineCount}</span></label>
+                <input
+                  type="range"
+                  min="1"
+                  max="100"
+                  value={machineCount}
                   onChange={(e) => setMachineCount(parseInt(e.target.value))}
                   className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-smart-yellow mb-8"
                 />
-                
+
                 <div className="flex items-center gap-4">
                   <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center text-green-400">
                     <TrendingUp size={32} />
                   </div>
                   <div>
-                    <p className="text-sm text-gray-400">Aylık Tahmini Tasarruf</p>
+                    <p className="text-sm text-gray-400">{t.roi.estimatedSavings}</p>
                     <p className="text-4xl font-black text-white tracking-tight">₺{savings}</p>
                   </div>
                 </div>
               </div>
             </div>
-            
+
             <div className="grid grid-cols-2 gap-6">
               {[
-                { icon: Zap, title: "Hız", desc: "Form doldurma süresinde %70 azalma." },
-                { icon: Shield, title: "Güvenlik", desc: "Arızaları önceden tespit edin." },
-                { icon: BarChart3, title: "Analiz", desc: "Veriye dayalı bakım kararları." },
-                { icon: Smartphone, title: "Mobil", desc: "Her operatörün cebinde." },
+                { icon: Zap, title: t.roi.benefits.speed.title, desc: t.roi.benefits.speed.desc },
+                { icon: Shield, title: t.roi.benefits.security.title, desc: t.roi.benefits.security.desc },
+                { icon: BarChart3, title: t.roi.benefits.analysis.title, desc: t.roi.benefits.analysis.desc },
+                { icon: Smartphone, title: t.roi.benefits.mobile.title, desc: t.roi.benefits.mobile.desc },
               ].map((item, idx) => (
-                <motion.div 
+                <motion.div
                   key={idx}
                   whileHover={{ scale: 1.05 }}
                   className="bg-white/5 p-6 rounded-2xl border border-white/10 hover:bg-white/10 transition-colors"
@@ -276,9 +273,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
       <section id="features" className="py-24 px-6">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-5xl font-bold mb-6">Neden Smartop?</h2>
+            <h2 className="text-3xl md:text-5xl font-bold mb-6">{t.features.title}</h2>
             <p className="text-gray-400 max-w-2xl mx-auto">
-              Geleneksel yöntemler yavaş, hataya açık ve pahalıdır. Biz süreci modernize ediyoruz.
+              {t.features.subtitle}
             </p>
           </div>
 
@@ -287,27 +284,27 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
               <div className="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center text-blue-400 mb-6">
                 <Globe size={24} />
               </div>
-              <h3 className="text-xl font-bold mb-4">Uzaktan Takip</h3>
+              <h3 className="text-xl font-bold mb-4">{t.features.remoteTracking.title}</h3>
               <p className="text-gray-400 leading-relaxed">
-                Şantiyeye gitmeden hangi makinenin çalıştığını, hangisinin yattığını harita üzerinden görün.
+                {t.features.remoteTracking.desc}
               </p>
             </div>
             <div className="bg-slate-800 p-8 rounded-2xl border border-white/5">
               <div className="w-12 h-12 bg-smart-yellow/20 rounded-lg flex items-center justify-center text-smart-yellow mb-6">
                 <CheckCircle size={24} />
               </div>
-              <h3 className="text-xl font-bold mb-4">Dijital Onay</h3>
+              <h3 className="text-xl font-bold mb-4">{t.features.digitalApproval.title}</h3>
               <p className="text-gray-400 leading-relaxed">
-                Operatör formu doldurur, yönetici anında onaylar. Islak imza bekleme derdine son.
+                {t.features.digitalApproval.desc}
               </p>
             </div>
             <div className="bg-slate-800 p-8 rounded-2xl border border-white/5">
               <div className="w-12 h-12 bg-purple-500/20 rounded-lg flex items-center justify-center text-purple-400 mb-6">
                 <BarChart3 size={24} />
               </div>
-              <h3 className="text-xl font-bold mb-4">Gelişmiş Raporlama</h3>
+              <h3 className="text-xl font-bold mb-4">{t.features.advancedReporting.title}</h3>
               <p className="text-gray-400 leading-relaxed">
-                Hangi parça ne sıklıkla arıza yapıyor? Hangi operatör daha verimli? Hepsi tek ekranda.
+                {t.features.advancedReporting.desc}
               </p>
             </div>
           </div>
@@ -320,16 +317,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
            <div className="absolute top-0 right-0 p-12 opacity-10">
               <Activity size={200} />
            </div>
-           
-           <h2 className="text-3xl md:text-5xl font-bold mb-6 relative z-10">Filo Yönetimini Şimdi Başlatın</h2>
+
+           <h2 className="text-3xl md:text-5xl font-bold mb-6 relative z-10">{t.cta.title}</h2>
            <p className="text-blue-100 text-lg mb-10 max-w-2xl mx-auto relative z-10">
-             Kredi kartı gerekmeden 14 gün boyunca tüm özellikleri ücretsiz deneyin.
+             {t.cta.subtitle}
            </p>
            <button
              onClick={openLoginModal}
              className="bg-smart-yellow text-smart-navy px-10 py-4 rounded-xl font-bold text-xl hover:bg-yellow-400 hover:scale-105 transition-all shadow-xl relative z-10"
            >
-             Hemen Kayıt Olun
+             {t.cta.button}
            </button>
         </div>
       </section>
@@ -341,11 +338,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
             <img src="/smartop-white.png" alt="Smartop" className="h-5 w-auto" />
           </div>
           <div className="flex gap-6">
-            <a href="#" className="hover:text-white">Gizlilik Politikası</a>
-            <a href="#" className="hover:text-white">Kullanım Şartları</a>
-            <a href="#" className="hover:text-white">Destek</a>
+            <a href="#" className="hover:text-white">{t.footer.privacy}</a>
+            <a href="#" className="hover:text-white">{t.footer.terms}</a>
+            <a href="#" className="hover:text-white">{t.footer.support}</a>
           </div>
-          <p>© 2024 Smartop Inc. Tüm hakları saklıdır.</p>
+          <p>{t.footer.copyright}</p>
         </div>
       </footer>
 
@@ -370,9 +367,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                 <div className="flex items-center gap-3">
                   <img src="/smartop-white.png" alt="Smartop" className="h-10 w-auto" />
                   <h2 className="text-2xl font-bold text-white">
-                    {authMode === 'login' && 'Portal Girişi'}
-                    {authMode === 'register' && 'Kayıt Ol'}
-                    {authMode === 'forgot-password' && 'Şifremi Unuttum'}
+                    {authMode === 'login' && t.auth.login}
+                    {authMode === 'register' && t.auth.register}
+                    {authMode === 'forgot-password' && t.auth.forgotPassword}
                   </h2>
                 </div>
                 <button
@@ -402,28 +399,28 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                 <>
                   <form onSubmit={handleLogin} className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">E-posta</label>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">{t.auth.email}</label>
                       <div className="relative">
                         <input
                           type="email"
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
                           className="w-full px-4 py-3 pl-11 bg-slate-900 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-smart-yellow focus:border-transparent transition-all"
-                          placeholder="ornek@firma.com"
+                          placeholder={t.auth.emailPlaceholder}
                           required
                         />
                         <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
                       </div>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">Şifre</label>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">{t.auth.password}</label>
                       <div className="relative">
                         <input
                           type={showPassword ? 'text' : 'password'}
                           value={password}
                           onChange={(e) => setPassword(e.target.value)}
                           className="w-full px-4 py-3 pl-11 pr-11 bg-slate-900 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-smart-yellow focus:border-transparent transition-all"
-                          placeholder="••••••••"
+                          placeholder={t.auth.passwordPlaceholder}
                           required
                         />
                         <Shield className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
@@ -446,14 +443,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                           onChange={(e) => setRememberMe(e.target.checked)}
                           className="w-4 h-4 rounded border-gray-600 bg-slate-900 text-smart-yellow focus:ring-smart-yellow focus:ring-offset-slate-800"
                         />
-                        <span className="text-sm text-gray-400">Beni hatırla</span>
+                        <span className="text-sm text-gray-400">{t.auth.rememberMe}</span>
                       </label>
                       <button
                         type="button"
                         onClick={() => { setAuthMode('forgot-password'); setError(''); }}
                         className="text-sm text-smart-yellow hover:underline"
                       >
-                        Şifremi unuttum
+                        {t.auth.forgotPasswordLink}
                       </button>
                     </div>
 
@@ -465,10 +462,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                       {isLoading ? (
                         <>
                           <Loader2 className="animate-spin" size={20} />
-                          Giriş yapılıyor...
+                          {t.auth.loggingIn}
                         </>
                       ) : (
-                        'Giriş Yap'
+                        t.auth.loginButton
                       )}
                     </button>
                   </form>
@@ -476,7 +473,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                   {/* Divider */}
                   <div className="flex items-center gap-4 my-6">
                     <div className="flex-1 h-px bg-white/10"></div>
-                    <span className="text-gray-500 text-sm">veya</span>
+                    <span className="text-gray-500 text-sm">{t.auth.or}</span>
                     <div className="flex-1 h-px bg-white/10"></div>
                   </div>
 
@@ -491,38 +488,20 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                       <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
                       <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
                     </svg>
-                    Google ile Giriş Yap
+                    {t.auth.googleLogin}
                   </button>
 
                   {/* Register Link */}
                   <p className="text-center text-gray-400 text-sm mt-6">
-                    Hesabınız yok mu?{' '}
+                    {t.auth.noAccount}{' '}
                     <button
                       onClick={() => { setAuthMode('register'); setError(''); }}
                       className="text-smart-yellow hover:underline font-medium"
                     >
-                      Kayıt Ol
+                      {t.auth.registerLink}
                     </button>
                   </p>
 
-                  {/* Demo Accounts */}
-                  <div className="mt-6 pt-6 border-t border-white/10">
-                    <p className="text-center text-gray-400 text-sm mb-3">Demo Hesapları:</p>
-                    <div className="space-y-2 text-xs text-gray-500">
-                      <div className="flex justify-between bg-slate-900/50 px-3 py-2 rounded-lg">
-                        <span>Admin:</span>
-                        <span className="text-gray-300">admin@smartop.com.tr / Admin123!</span>
-                      </div>
-                      <div className="flex justify-between bg-slate-900/50 px-3 py-2 rounded-lg">
-                        <span>Manager:</span>
-                        <span className="text-gray-300">manager@smartop.com.tr / Manager123!</span>
-                      </div>
-                      <div className="flex justify-between bg-slate-900/50 px-3 py-2 rounded-lg">
-                        <span>Operator:</span>
-                        <span className="text-gray-300">operator1@smartop.com.tr / Operator123!</span>
-                      </div>
-                    </div>
-                  </div>
                 </>
               )}
 
@@ -531,14 +510,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                 <>
                   <form onSubmit={handleRegister} className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">Şirket Adı</label>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">{t.auth.companyName}</label>
                       <div className="relative">
                         <input
                           type="text"
                           value={registerData.organizationName}
                           onChange={(e) => setRegisterData({...registerData, organizationName: e.target.value})}
                           className="w-full px-4 py-3 pl-11 bg-slate-900 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-smart-yellow focus:border-transparent transition-all"
-                          placeholder="Şirket Adı"
+                          placeholder={t.auth.companyPlaceholder}
                           required
                         />
                         <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
@@ -547,41 +526,41 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
 
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-2">Ad</label>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">{t.auth.firstName}</label>
                         <div className="relative">
                           <input
                             type="text"
                             value={registerData.firstName}
                             onChange={(e) => setRegisterData({...registerData, firstName: e.target.value})}
                             className="w-full px-4 py-3 pl-11 bg-slate-900 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-smart-yellow focus:border-transparent transition-all"
-                            placeholder="Ad"
+                            placeholder={t.auth.firstNamePlaceholder}
                             required
                           />
                           <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
                         </div>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-2">Soyad</label>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">{t.auth.lastName}</label>
                         <input
                           type="text"
                           value={registerData.lastName}
                           onChange={(e) => setRegisterData({...registerData, lastName: e.target.value})}
                           className="w-full px-4 py-3 bg-slate-900 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-smart-yellow focus:border-transparent transition-all"
-                          placeholder="Soyad"
+                          placeholder={t.auth.lastNamePlaceholder}
                           required
                         />
                       </div>
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">E-posta</label>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">{t.auth.email}</label>
                       <div className="relative">
                         <input
                           type="email"
                           value={registerData.email}
                           onChange={(e) => setRegisterData({...registerData, email: e.target.value})}
                           className="w-full px-4 py-3 pl-11 bg-slate-900 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-smart-yellow focus:border-transparent transition-all"
-                          placeholder="ornek@firma.com"
+                          placeholder={t.auth.emailPlaceholder}
                           required
                         />
                         <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
@@ -589,14 +568,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">Şifre</label>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">{t.auth.password}</label>
                       <div className="relative">
                         <input
                           type={showPassword ? 'text' : 'password'}
                           value={registerData.password}
                           onChange={(e) => setRegisterData({...registerData, password: e.target.value})}
                           className="w-full px-4 py-3 pl-11 pr-11 bg-slate-900 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-smart-yellow focus:border-transparent transition-all"
-                          placeholder="En az 8 karakter"
+                          placeholder={t.auth.passwordMinLength}
                           required
                         />
                         <Shield className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
@@ -611,14 +590,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">Şifre Tekrar</label>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">{t.auth.confirmPassword}</label>
                       <div className="relative">
                         <input
                           type={showPassword ? 'text' : 'password'}
                           value={registerData.confirmPassword}
                           onChange={(e) => setRegisterData({...registerData, confirmPassword: e.target.value})}
                           className="w-full px-4 py-3 pl-11 bg-slate-900 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-smart-yellow focus:border-transparent transition-all"
-                          placeholder="Şifreyi tekrar girin"
+                          placeholder={t.auth.confirmPasswordPlaceholder}
                           required
                         />
                         <Shield className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
@@ -633,22 +612,22 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                       {isLoading ? (
                         <>
                           <Loader2 className="animate-spin" size={20} />
-                          Kayıt yapılıyor...
+                          {t.auth.registering}
                         </>
                       ) : (
-                        'Kayıt Ol'
+                        t.auth.registerButton
                       )}
                     </button>
                   </form>
 
                   {/* Login Link */}
                   <p className="text-center text-gray-400 text-sm mt-6">
-                    Zaten hesabınız var mı?{' '}
+                    {t.auth.hasAccount}{' '}
                     <button
                       onClick={() => { setAuthMode('login'); setError(''); }}
                       className="text-smart-yellow hover:underline font-medium"
                     >
-                      Giriş Yap
+                      {t.auth.loginLink}
                     </button>
                   </p>
                 </>
@@ -658,18 +637,18 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
               {authMode === 'forgot-password' && (
                 <>
                   <p className="text-gray-400 text-sm mb-6">
-                    E-posta adresinizi girin, size şifre sıfırlama bağlantısı gönderelim.
+                    {t.auth.forgotPasswordDesc}
                   </p>
                   <form onSubmit={handleForgotPassword} className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">E-posta</label>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">{t.auth.email}</label>
                       <div className="relative">
                         <input
                           type="email"
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
                           className="w-full px-4 py-3 pl-11 bg-slate-900 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-smart-yellow focus:border-transparent transition-all"
-                          placeholder="ornek@firma.com"
+                          placeholder={t.auth.emailPlaceholder}
                           required
                         />
                         <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
@@ -684,10 +663,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                       {isLoading ? (
                         <>
                           <Loader2 className="animate-spin" size={20} />
-                          Gönderiliyor...
+                          {t.auth.sending}
                         </>
                       ) : (
-                        'Sıfırlama Bağlantısı Gönder'
+                        t.auth.sendResetLink
                       )}
                     </button>
                   </form>
@@ -698,7 +677,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                       onClick={() => { setAuthMode('login'); setError(''); setSuccessMessage(''); }}
                       className="text-smart-yellow hover:underline font-medium"
                     >
-                      ← Giriş sayfasına dön
+                      {t.auth.backToLogin}
                     </button>
                   </p>
                 </>

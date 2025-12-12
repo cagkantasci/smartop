@@ -6,7 +6,7 @@ export interface Machine {
   brand: string;
   model: string;
   year: number;
-  machineType: 'excavator' | 'dozer' | 'loader' | 'crane' | 'truck' | 'roller' | 'grader' | 'other';
+  machineType: 'excavator' | 'dozer' | 'loader' | 'crane' | 'truck' | 'roller' | 'grader' | 'forklift' | 'backhoe' | 'skid_steer' | 'telehandler' | 'compactor' | 'paver' | 'trencher' | 'drill' | 'generator' | 'compressor' | 'concrete_equipment' | 'lift' | 'trailer' | 'scraper' | 'other';
   serialNumber?: string;
   licensePlate?: string;
   status: 'active' | 'idle' | 'maintenance' | 'out_of_service';

@@ -40,6 +40,20 @@ enum MachineType {
   truck
   grader
   roller
+  forklift
+  backhoe
+  skid_steer
+  telehandler
+  compactor
+  paver
+  trencher
+  drill
+  generator
+  compressor
+  concrete_equipment
+  lift
+  trailer
+  scraper
   other
 }
 
@@ -165,6 +179,7 @@ model User {
   refreshTokens         RefreshToken[]
   jobAssignments        JobAssignment[]
   passwordResetTokens   PasswordResetToken[]
+  deviceTokens          DeviceToken[]
 
   @@unique([organizationId, email])
   @@index([organizationId])
@@ -454,6 +469,37 @@ model AuditLog {
 }
 
 // ============================================
+// DEVICE TOKENS (FCM Push Notifications)
+// ============================================
+enum DevicePlatform {
+  ios
+  android
+  web
+}
+
+model DeviceToken {
+  id             String         @id @default(uuid())
+  userId         String         @map("user_id")
+  token          String         // FCM or Expo push token
+  platform       DevicePlatform
+  deviceName     String?        @map("device_name")
+  deviceModel    String?        @map("device_model")
+  appVersion     String?        @map("app_version")
+  isActive       Boolean        @default(true) @map("is_active")
+  lastUsedAt     DateTime       @default(now()) @map("last_used_at")
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, token])
+  @@index([userId, isActive])
+  @@index([token])
+  @@map("device_tokens")
+}
+
+// ============================================
 // REFRESH TOKENS
 // ============================================
 model RefreshToken {
@@ -486,4 +532,85 @@ model PasswordResetToken {
 
   @@index([tokenHash])
   @@map("password_reset_tokens")
+}
+
+// ============================================
+// MACHINE REFERENCE DATA (Global - Not tenant-specific)
+// ============================================
+
+// Machine Categories (Excavators, Loaders, Cranes, etc.)
+model MachineCategory {
+  id          String   @id @default(uuid())
+  name        String   // Display name (e.g., "Excavators")
+  nameEn      String   @map("name_en") // English name
+  nameTr      String?  @map("name_tr") // Turkish name
+  slug        String   @unique // URL-friendly identifier (e.g., "excavators")
+  parentId    String?  @map("parent_id") // For subcategories
+  description String?
+  iconName    String?  @map("icon_name") // Icon identifier for UI
+  sortOrder   Int      @default(0) @map("sort_order")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  parent      MachineCategory?  @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children    MachineCategory[] @relation("CategoryHierarchy")
+  models      MachineModel[]
+
+  @@index([parentId])
+  @@index([slug])
+  @@map("machine_categories")
+}
+
+// Machine Brands/Manufacturers (Caterpillar, Komatsu, Volvo, etc.)
+model MachineBrand {
+  id          String   @id @default(uuid())
+  name        String   // Display name (e.g., "CATERPILLAR")
+  slug        String   @unique // URL-friendly identifier (e.g., "caterpillar")
+  logoUrl     String?  @map("logo_url")
+  website     String?
+  country     String?  // Country of origin
+  description String?
+  isPopular   Boolean  @default(false) @map("is_popular") // For showing popular brands first
+  sortOrder   Int      @default(0) @map("sort_order")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  models MachineModel[]
+
+  @@index([slug])
+  @@index([isPopular])
+  @@map("machine_brands")
+}
+
+// Machine Models (specific machine models from brands)
+model MachineModel {
+  id                String   @id @default(uuid())
+  brandId           String   @map("brand_id")
+  categoryId        String?  @map("category_id")
+  name              String   // Model name (e.g., "320D", "PC200-8")
+  fullName          String?  @map("full_name") // Full display name
+  yearStart         Int?     @map("year_start") // Production start year
+  yearEnd           Int?     @map("year_end") // Production end year (null if still in production)
+  enginePower       String?  @map("engine_power") // e.g., "147 HP"
+  operatingWeight   String?  @map("operating_weight") // e.g., "20,000 kg"
+  specifications    Json     @default("{}") // Additional specs
+  imageUrl          String?  @map("image_url")
+  sourceUrl         String?  @map("source_url") // Where the data was scraped from
+  isActive          Boolean  @default(true) @map("is_active")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  brand    MachineBrand     @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  category MachineCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  @@unique([brandId, name])
+  @@index([brandId])
+  @@index([categoryId])
+  @@index([name])
+  @@map("machine_models")
 }

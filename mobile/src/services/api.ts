@@ -1,7 +1,20 @@
 import axios, { AxiosInstance, InternalAxiosRequestConfig } from 'axios';
 import * as SecureStore from 'expo-secure-store';
+import { Platform } from 'react-native';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.0.19:3000/api/v1';
+// Use localhost for web, local IP for native (mobile needs IP to reach dev machine)
+const getApiUrl = () => {
+  if (process.env.EXPO_PUBLIC_API_URL) {
+    return process.env.EXPO_PUBLIC_API_URL;
+  }
+  // Web runs in browser on same machine, can use localhost
+  // Native runs on device/emulator, needs IP address
+  return Platform.OS === 'web'
+    ? 'http://localhost:3000/api/v1'
+    : 'http://192.168.0.13:3000/api/v1';
+};
+
+const API_URL = getApiUrl();
 
 // Create axios instance
 const api: AxiosInstance = axios.create({

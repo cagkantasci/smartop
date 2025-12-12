@@ -9,10 +9,11 @@ import {
   TouchableOpacity,
   Alert,
   Image,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Button, Input } from '../../components/ui';
+import { Button } from '../../components/ui';
 import { useAuth } from '../../context/AuthContext';
 import { biometricService, BiometricStatus } from '../../services/biometricService';
 
@@ -35,6 +36,8 @@ export function LoginScreen() {
   const { login, isLoading } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   const [biometricStatus, setBiometricStatus] = useState<BiometricStatus | null>(null);
   const [isBiometricLoading, setIsBiometricLoading] = useState(false);
@@ -93,9 +96,13 @@ export function LoginScreen() {
     try {
       await login(email, password);
     } catch (error: any) {
+      console.log('Login error:', error);
+      const message = error.response?.data?.message
+        || error.message
+        || 'Sunucuya bağlanılamadı. Lütfen internet bağlantınızı kontrol edin.';
       Alert.alert(
         'Giriş Başarısız',
-        error.response?.data?.message || 'E-posta veya şifre hatalı',
+        message,
         [{ text: 'Tamam' }]
       );
     }
@@ -118,6 +125,14 @@ export function LoginScreen() {
     );
   };
 
+  const handleGoogleLogin = () => {
+    Alert.alert('Bilgi', 'Google ile giriş yakında aktif olacak.');
+  };
+
+  const handleRegister = () => {
+    Alert.alert('Kayıt Ol', 'Kayıt olmak için lütfen web portalımızı ziyaret edin.');
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
@@ -129,65 +144,87 @@ export function LoginScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* Logo & Header */}
-          <View style={styles.header}>
-            <View style={styles.logoContainer}>
+          {/* Login Card */}
+          <View style={styles.card}>
+            {/* Header with Logo */}
+            <View style={styles.cardHeader}>
               <Image
                 source={require('../../../assets/smartop-white.png')}
                 style={styles.logoImage}
                 resizeMode="contain"
               />
-            </View>
-            <Text style={styles.subtitle}>
-              Saha Operasyonlarını Dijitalleştirin
-            </Text>
-          </View>
-
-          {/* Login Card */}
-          <View style={styles.card}>
-            <View style={styles.cardHeader}>
               <Text style={styles.cardTitle}>Portal Girişi</Text>
+              <TouchableOpacity style={styles.closeButton}>
+                <Ionicons name="close" size={24} color={COLORS.textSecondary} />
+              </TouchableOpacity>
             </View>
 
             {/* Login Form */}
             <View style={styles.form}>
+              {/* Email Input */}
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>E-posta</Text>
                 <View style={styles.inputContainer}>
                   <Ionicons name="mail-outline" size={20} color={COLORS.textMuted} style={styles.inputIcon} />
-                  <Input
+                  <TextInput
+                    style={styles.textInput}
                     placeholder="ornek@firma.com"
+                    placeholderTextColor={COLORS.textMuted}
                     value={email}
                     onChangeText={setEmail}
                     keyboardType="email-address"
                     autoCapitalize="none"
                     autoComplete="email"
-                    error={errors.email}
-                    containerStyle={styles.inputWrapper}
-                    inputStyle={styles.input}
-                    placeholderTextColor={COLORS.textMuted}
                   />
                 </View>
+                {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
               </View>
 
+              {/* Password Input */}
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>Şifre</Text>
                 <View style={styles.inputContainer}>
                   <Ionicons name="lock-closed-outline" size={20} color={COLORS.textMuted} style={styles.inputIcon} />
-                  <Input
+                  <TextInput
+                    style={styles.textInput}
                     placeholder="••••••••"
+                    placeholderTextColor={COLORS.textMuted}
                     value={password}
                     onChangeText={setPassword}
-                    secureTextEntry
+                    secureTextEntry={!showPassword}
                     autoComplete="password"
-                    error={errors.password}
-                    containerStyle={styles.inputWrapper}
-                    inputStyle={styles.input}
-                    placeholderTextColor={COLORS.textMuted}
                   />
+                  <TouchableOpacity
+                    onPress={() => setShowPassword(!showPassword)}
+                    style={styles.eyeIcon}
+                  >
+                    <Ionicons
+                      name={showPassword ? "eye-off-outline" : "eye-outline"}
+                      size={20}
+                      color={COLORS.textMuted}
+                    />
+                  </TouchableOpacity>
                 </View>
+                {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
               </View>
 
+              {/* Remember Me & Forgot Password */}
+              <View style={styles.optionsRow}>
+                <TouchableOpacity
+                  style={styles.rememberMe}
+                  onPress={() => setRememberMe(!rememberMe)}
+                >
+                  <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]}>
+                    {rememberMe && <Ionicons name="checkmark" size={14} color={COLORS.primary} />}
+                  </View>
+                  <Text style={styles.rememberMeText}>Beni hatırla</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={handleForgotPassword}>
+                  <Text style={styles.forgotPasswordText}>Şifremi unuttum</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Login Button */}
               <Button
                 title={isLoading ? 'Giriş yapılıyor...' : 'Giriş Yap'}
                 onPress={handleLogin}
@@ -196,6 +233,34 @@ export function LoginScreen() {
                 style={styles.loginButton}
                 textStyle={styles.loginButtonText}
               />
+
+              {/* Divider */}
+              <View style={styles.divider}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>veya</Text>
+                <View style={styles.dividerLine} />
+              </View>
+
+              {/* Google Login */}
+              <TouchableOpacity style={styles.googleButton} onPress={handleGoogleLogin}>
+                <View style={styles.googleIconContainer}>
+                  <Text style={styles.googleIconG}>G</Text>
+                  <Text style={styles.googleIconO1}>o</Text>
+                  <Text style={styles.googleIconO2}>o</Text>
+                  <Text style={styles.googleIconG2}>g</Text>
+                  <Text style={styles.googleIconL}>l</Text>
+                  <Text style={styles.googleIconE}>e</Text>
+                </View>
+                <Text style={styles.googleButtonText}>ile Giriş Yap</Text>
+              </TouchableOpacity>
+
+              {/* Register Link */}
+              <View style={styles.registerContainer}>
+                <Text style={styles.registerText}>Hesabınız yok mu? </Text>
+                <TouchableOpacity onPress={handleRegister}>
+                  <Text style={styles.registerLink}>Kayıt Ol</Text>
+                </TouchableOpacity>
+              </View>
 
               {/* Biometric Login Button */}
               {biometricStatus?.isAvailable && biometricStatus?.isEnabled && (
@@ -216,23 +281,6 @@ export function LoginScreen() {
                   </Text>
                 </TouchableOpacity>
               )}
-            </View>
-
-            {/* Demo Credentials */}
-            <View style={styles.demoSection}>
-              <Text style={styles.demoTitle}>Demo Hesapları:</Text>
-              <View style={styles.demoCredential}>
-                <Text style={styles.demoLabel}>Admin:</Text>
-                <Text style={styles.demoValue}>admin@demo-insaat.com / Admin123!</Text>
-              </View>
-              <View style={styles.demoCredential}>
-                <Text style={styles.demoLabel}>Manager:</Text>
-                <Text style={styles.demoValue}>manager@demo-insaat.com / Manager123!</Text>
-              </View>
-              <View style={styles.demoCredential}>
-                <Text style={styles.demoLabel}>Operator:</Text>
-                <Text style={styles.demoValue}>operator1@demo-insaat.com / Operator123!</Text>
-              </View>
             </View>
           </View>
         </ScrollView>
@@ -255,23 +303,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 40,
   },
-  header: {
-    alignItems: 'center',
-    marginBottom: 32,
-  },
-  logoContainer: {
-    marginBottom: 12,
-    alignItems: 'center',
-  },
-  logoImage: {
-    width: 200,
-    height: 60,
-  },
-  subtitle: {
-    fontSize: 15,
-    color: COLORS.textSecondary,
-    marginTop: 4,
-  },
   card: {
     backgroundColor: COLORS.card,
     borderRadius: 20,
@@ -282,13 +313,22 @@ const styles = StyleSheet.create({
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
-    gap: 12,
+    justifyContent: 'space-between',
+    marginBottom: 24,
+  },
+  logoImage: {
+    width: 120,
+    height: 36,
   },
   cardTitle: {
-    fontSize: 22,
-    fontWeight: '700',
+    fontSize: 20,
+    fontWeight: '600',
     color: COLORS.text,
+    flex: 1,
+    marginLeft: 8,
+  },
+  closeButton: {
+    padding: 4,
   },
   form: {
     gap: 16,
@@ -313,16 +353,53 @@ const styles = StyleSheet.create({
   inputIcon: {
     marginRight: 10,
   },
-  inputWrapper: {
+  textInput: {
     flex: 1,
-    marginBottom: 0,
-  },
-  input: {
-    backgroundColor: 'transparent',
-    borderWidth: 0,
     color: COLORS.text,
     fontSize: 16,
     paddingVertical: 14,
+  },
+  eyeIcon: {
+    padding: 4,
+  },
+  errorText: {
+    color: COLORS.error,
+    fontSize: 12,
+    marginTop: 4,
+  },
+  optionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginVertical: 4,
+  },
+  rememberMe: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  checkbox: {
+    width: 18,
+    height: 18,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: COLORS.cardBorder,
+    backgroundColor: COLORS.inputBg,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  checkboxChecked: {
+    backgroundColor: COLORS.secondary,
+    borderColor: COLORS.secondary,
+  },
+  rememberMeText: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+  },
+  forgotPasswordText: {
+    fontSize: 14,
+    color: COLORS.secondary,
+    fontWeight: '500',
   },
   loginButton: {
     backgroundColor: COLORS.secondary,
@@ -335,6 +412,84 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '700',
   },
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 16,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: COLORS.cardBorder,
+  },
+  dividerText: {
+    color: COLORS.textMuted,
+    fontSize: 14,
+    marginHorizontal: 16,
+  },
+  googleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.text,
+    borderRadius: 12,
+    paddingVertical: 14,
+    gap: 8,
+  },
+  googleIconContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  googleIconG: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#4285F4',
+  },
+  googleIconO1: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#EA4335',
+  },
+  googleIconO2: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FBBC05',
+  },
+  googleIconG2: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#4285F4',
+  },
+  googleIconL: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#34A853',
+  },
+  googleIconE: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#EA4335',
+  },
+  googleButtonText: {
+    color: COLORS.primary,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  registerContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  registerText: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+  },
+  registerLink: {
+    fontSize: 14,
+    color: COLORS.secondary,
+    fontWeight: '600',
+  },
   biometricButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -344,40 +499,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.secondary,
     borderRadius: 12,
-    marginTop: 12,
+    marginTop: 16,
   },
   biometricButtonText: {
     color: COLORS.secondary,
     fontSize: 15,
     fontWeight: '600',
-  },
-  demoSection: {
-    marginTop: 24,
-    paddingTop: 20,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.cardBorder,
-  },
-  demoTitle: {
-    fontSize: 13,
-    color: COLORS.textSecondary,
-    textAlign: 'center',
-    marginBottom: 12,
-  },
-  demoCredential: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    backgroundColor: 'rgba(15, 23, 42, 0.5)',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 8,
-    marginBottom: 8,
-  },
-  demoLabel: {
-    fontSize: 12,
-    color: COLORS.textMuted,
-  },
-  demoValue: {
-    fontSize: 11,
-    color: COLORS.textSecondary,
   },
 });

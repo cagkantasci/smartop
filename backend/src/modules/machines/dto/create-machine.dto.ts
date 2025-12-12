@@ -31,8 +31,8 @@ export class CreateMachineDto {
   @Max(2100)
   year?: number;
 
-  @IsEnum(['excavator', 'dozer', 'crane', 'loader', 'truck', 'grader', 'roller', 'other'])
-  machineType: 'excavator' | 'dozer' | 'crane' | 'loader' | 'truck' | 'grader' | 'roller' | 'other';
+  @IsEnum(['excavator', 'dozer', 'crane', 'loader', 'truck', 'grader', 'roller', 'forklift', 'backhoe', 'skid_steer', 'telehandler', 'compactor', 'paver', 'trencher', 'drill', 'generator', 'compressor', 'concrete_equipment', 'lift', 'trailer', 'scraper', 'other'])
+  machineType: 'excavator' | 'dozer' | 'crane' | 'loader' | 'truck' | 'grader' | 'roller' | 'forklift' | 'backhoe' | 'skid_steer' | 'telehandler' | 'compactor' | 'paver' | 'trencher' | 'drill' | 'generator' | 'compressor' | 'concrete_equipment' | 'lift' | 'trailer' | 'scraper' | 'other';
 
   @IsOptional()
   @IsString()

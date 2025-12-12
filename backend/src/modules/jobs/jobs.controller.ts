@@ -104,17 +104,18 @@ export class JobsController {
   }
 
   @Patch(':id/start')
-  @Roles('admin', 'manager')
+  @Roles('admin', 'manager', 'operator')
   @ApiOperation({ summary: 'Start a job' })
   @ApiParam({ name: 'id', description: 'Job ID' })
   @ApiResponse({ status: 200, description: 'Job started' })
   @ApiResponse({ status: 404, description: 'Job not found' })
-  @ApiResponse({ status: 403, description: 'Forbidden - requires admin or manager role' })
+  @ApiResponse({ status: 403, description: 'Forbidden - requires admin, manager or operator role' })
   async startJob(
     @Param('id') id: string,
     @CurrentUser('organizationId') organizationId: string,
+    @CurrentUser('id') userId: string,
   ) {
-    return this.jobsService.startJob(id, organizationId);
+    return this.jobsService.startJob(id, organizationId, userId);
   }
 
   @Patch(':id/complete')

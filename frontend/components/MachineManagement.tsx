@@ -1,6 +1,6 @@
 
-import React, { useState } from 'react';
-import { Plus, Search, Fuel, Calendar, Tractor, Truck, Anchor, Hammer, HardHat, User, FileCheck, X, ShoppingCart, CreditCard, CheckCircle, Pencil, Smartphone, Save, Briefcase, UserCog, Check, Percent, Zap, Sparkles, Loader2, RefreshCw, Image as ImageIcon, Trash2, AlertTriangle, MapPin } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Plus, Search, Fuel, Calendar, Tractor, Truck, Anchor, Hammer, HardHat, User, FileCheck, X, ShoppingCart, CreditCard, CheckCircle, Pencil, Smartphone, Save, Briefcase, UserCog, Check, Percent, Zap, Sparkles, Loader2, RefreshCw, Image as ImageIcon, Trash2, AlertTriangle, MapPin, Wrench, Settings, CircleDot, Box, Boxes, Factory, Power, Wind, Construction, ArrowUpDown, Container, Shovel } from 'lucide-react';
 import { Machine, MachineStatus, MachineStatusLabels, Operator, ChecklistTemplate, TranslationDictionary } from '../types';
 
 interface MachineManagementProps {
@@ -18,54 +18,182 @@ const BASE_PRICE_PER_MACHINE = 500; // TL or Unit Currency
 const DISCOUNT_THRESHOLD = 50; // Machines
 const DISCOUNT_RATE = 0.10; // 10%
 
-// Machine Image Library (KEEP EXISTING CONSTANT)
+// Machine Image Library - Extended for all types
 const MACHINE_TYPE_IMAGES: Record<string, string[]> = {
   Excavator: [
     'https://images.unsplash.com/photo-1582239634898-3564c768832a?q=80&w=800',
     'https://images.unsplash.com/photo-1580901368919-7738efb0f87e?q=80&w=800',
     'https://images.unsplash.com/photo-1627926442621-e377484df72f?q=80&w=800',
     'https://images.unsplash.com/photo-1504307651254-35680f356dfd?q=80&w=800',
-    'https://images.unsplash.com/photo-1578575437130-527eed3abbec?q=80&w=800',
   ],
   Dozer: [
     'https://images.unsplash.com/photo-1547625832-6a84d46f90d4?q=80&w=800',
     'https://images.unsplash.com/photo-1589939705384-5185137a7f0f?q=80&w=800',
     'https://images.unsplash.com/photo-1599818450125-613d942a00d7?q=80&w=800',
-    'https://images.unsplash.com/photo-1533062635939-50ebf92723c0?q=80&w=800',
   ],
   Crane: [
     'https://images.unsplash.com/photo-1579407364101-72782e541176?q=80&w=800',
     'https://images.unsplash.com/photo-1504917595217-d4dc5ebe6122?q=80&w=800',
     'https://images.unsplash.com/photo-1625628578635-c276359cb873?q=80&w=800',
-    'https://images.unsplash.com/photo-1498612753354-772a30629434?q=80&w=800',
   ],
   Truck: [
     'https://images.unsplash.com/photo-1605218427368-ade792b0c487?q=80&w=800',
     'https://images.unsplash.com/photo-1601584115197-04ecc0da31d7?q=80&w=800',
     'https://images.unsplash.com/photo-1596726224388-7521c7508493?q=80&w=800',
-    'https://images.unsplash.com/photo-1586021571731-159e66c79a29?q=80&w=800',
-    'https://images.unsplash.com/photo-1519003722824-194d4455a60c?q=80&w=800',
   ],
   Loader: [
     'https://images.unsplash.com/photo-1517429532728-66258455e27a?q=80&w=800',
     'https://images.unsplash.com/photo-1574689049597-7e6df3e2b134?q=80&w=800',
     'https://images.unsplash.com/photo-1535056770514-6b95c378e932?q=80&w=800',
+  ],
+  Grader: [
+    'https://images.unsplash.com/photo-1565193566173-7a0ee3dbe261?q=80&w=800',
+    'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?q=80&w=800',
+  ],
+  Roller: [
+    'https://images.unsplash.com/photo-1581094794329-c8112a89af12?q=80&w=800',
+    'https://images.unsplash.com/photo-1578575437130-527eed3abbec?q=80&w=800',
+  ],
+  Forklift: [
+    'https://images.unsplash.com/photo-1578575437130-527eed3abbec?q=80&w=800',
+    'https://images.unsplash.com/photo-1566576912321-d58ddd7a6088?q=80&w=800',
+  ],
+  Backhoe: [
+    'https://images.unsplash.com/photo-1580901368919-7738efb0f87e?q=80&w=800',
+    'https://images.unsplash.com/photo-1504307651254-35680f356dfd?q=80&w=800',
+  ],
+  SkidSteer: [
+    'https://images.unsplash.com/photo-1517429532728-66258455e27a?q=80&w=800',
+    'https://images.unsplash.com/photo-1535056770514-6b95c378e932?q=80&w=800',
+  ],
+  Telehandler: [
+    'https://images.unsplash.com/photo-1574689049597-7e6df3e2b134?q=80&w=800',
     'https://images.unsplash.com/photo-1615811361523-6bd03c7799a4?q=80&w=800',
+  ],
+  Compactor: [
+    'https://images.unsplash.com/photo-1581094794329-c8112a89af12?q=80&w=800',
+  ],
+  Paver: [
+    'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?q=80&w=800',
+  ],
+  Trencher: [
+    'https://images.unsplash.com/photo-1504307651254-35680f356dfd?q=80&w=800',
+  ],
+  Drill: [
+    'https://images.unsplash.com/photo-1504307651254-35680f356dfd?q=80&w=800',
+  ],
+  Generator: [
+    'https://images.unsplash.com/photo-1548695607-9c73430ba065?q=80&w=800',
+  ],
+  Compressor: [
+    'https://images.unsplash.com/photo-1548695607-9c73430ba065?q=80&w=800',
+  ],
+  ConcreteEquipment: [
+    'https://images.unsplash.com/photo-1504307651254-35680f356dfd?q=80&w=800',
+  ],
+  Lift: [
+    'https://images.unsplash.com/photo-1579407364101-72782e541176?q=80&w=800',
+  ],
+  Trailer: [
+    'https://images.unsplash.com/photo-1605218427368-ade792b0c487?q=80&w=800',
+  ],
+  Scraper: [
+    'https://images.unsplash.com/photo-1589939705384-5185137a7f0f?q=80&w=800',
+  ],
+  Other: [
+    'https://images.unsplash.com/photo-1504307651254-35680f356dfd?q=80&w=800',
   ],
 };
 
-// Mock Database for Auto-Fill (KEEP EXISTING CONSTANT)
-const MACHINE_KNOWLEDGE_BASE = [
-  { keywords: ['320', '323', '330', '336', 'cat'], brand: 'Caterpillar', type: 'Excavator', image: 'https://images.unsplash.com/photo-1582239634898-3564c768832a?q=80&w=800' },
-  { keywords: ['d8', 'd6', 'd155', 'dozer', 'komatsu'], brand: 'Komatsu', type: 'Dozer', image: 'https://images.unsplash.com/photo-1547625832-6a84d46f90d4?q=80&w=800' },
-  { keywords: ['ltm', 'crane', 'liebherr', 'mobile'], brand: 'Liebherr', type: 'Crane', image: 'https://images.unsplash.com/photo-1579407364101-72782e541176?q=80&w=800' },
-  { keywords: ['actros', 'axor', 'arocs', 'mercedes'], brand: 'Mercedes-Benz', type: 'Truck', image: 'https://images.unsplash.com/photo-1605218427368-ade792b0c487?q=80&w=800' },
-  { keywords: ['3cx', '4cx', 'jcb', 'beko'], brand: 'JCB', type: 'Loader', image: 'https://images.unsplash.com/photo-1517429532728-66258455e27a?q=80&w=800' },
-  { keywords: ['ec', 'volvo', '220', '300'], brand: 'Volvo', type: 'Excavator', image: 'https://images.unsplash.com/photo-1580901368919-7738efb0f87e?q=80&w=800' },
-  { keywords: ['hitachi', 'zx'], brand: 'Hitachi', type: 'Excavator', image: 'https://images.unsplash.com/photo-1627926442621-e377484df72f?q=80&w=800' },
-  { keywords: ['scania', 'r500', 'g400'], brand: 'Scania', type: 'Truck', image: 'https://images.unsplash.com/photo-1601584115197-04ecc0da31d7?q=80&w=800' },
-  { keywords: ['man', 'tgs', 'tgx'], brand: 'MAN', type: 'Truck', image: 'https://images.unsplash.com/photo-1596726224388-7521c7508493?q=80&w=800' },
-];
+// API URL for machine reference data
+const API_URL = '/api/v1';
+
+// Machine type category mapping from API slugs to frontend types
+const CATEGORY_TO_TYPE_MAP: Record<string, Machine['type']> = {
+  // Excavator types
+  'excavators': 'Excavator',
+  'crawler-excavators': 'Excavator',
+  'wheeled-excavators': 'Excavator',
+  'mini-excavators': 'Excavator',
+  'long-reach-excavators': 'Excavator',
+  // Dozer
+  'dozers': 'Dozer',
+  // Loader types
+  'loaders': 'Loader',
+  'wheel-loaders': 'Loader',
+  'track-loaders': 'Loader',
+  'compact-track-loaders': 'Loader',
+  // Crane types
+  'cranes': 'Crane',
+  'crawler-cranes': 'Crane',
+  'rough-terrain-cranes': 'Crane',
+  'all-terrain-cranes': 'Crane',
+  'truck-cranes': 'Crane',
+  'tower-cranes': 'Crane',
+  // Truck
+  'trucks': 'Truck',
+  // Grader
+  'graders': 'Grader',
+  // Roller
+  'rollers': 'Roller',
+  // Forklift
+  'forklifts': 'Forklift',
+  // Backhoe
+  'backhoes': 'Backhoe',
+  // Skid Steer
+  'skid-steers': 'SkidSteer',
+  // Telehandler
+  'telehandlers': 'Telehandler',
+  // Compactor
+  'compactors': 'Compactor',
+  // Paver
+  'pavers': 'Paver',
+  // Trencher
+  'trenchers': 'Trencher',
+  // Drill
+  'drills': 'Drill',
+  // Generator
+  'generators': 'Generator',
+  // Compressor
+  'compressors': 'Compressor',
+  // Concrete Equipment
+  'concrete-equipment': 'ConcreteEquipment',
+  // Lift types
+  'lifts': 'Lift',
+  'boom-lifts': 'Lift',
+  'scissor-lifts': 'Lift',
+  'personnel-lifts': 'Lift',
+  // Trailer
+  'trailers': 'Trailer',
+  // Scraper
+  'scrapers': 'Scraper',
+};
+
+// Smart fill suggestion type
+interface SmartFillSuggestion {
+  type: string;
+  brand: string;
+  brandId: string;
+  model: string | null;
+  modelId: string | null;
+  fullName: string;
+  category: string | null;
+  categoryId: string | null;
+  confidence: number;
+}
+
+interface SmartFillResponse {
+  suggestions: SmartFillSuggestion[];
+  matchedBrand: { id: string; name: string; slug: string } | null;
+  matchedCategory: { id: string; name: string; nameEn: string; nameTr: string; slug: string } | null;
+  matchedModels: Array<{
+    id: string;
+    name: string;
+    fullName: string | null;
+    brand: { id: string; name: string; slug: string };
+    category: { id: string; name: string; nameEn: string; nameTr: string; slug: string } | null;
+  }>;
+}
 
 export const MachineManagement: React.FC<MachineManagementProps> = ({ machines, operators, checklistTemplates, addMachine, updateMachine, deleteMachine, t }) => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -85,6 +213,24 @@ export const MachineManagement: React.FC<MachineManagementProps> = ({ machines, 
   const [searchTerm, setSearchTerm] = useState('');
   const [isAutoFilling, setIsAutoFilling] = useState(false);
 
+  // Smart Fill Suggestions State
+  const [smartFillSuggestions, setSmartFillSuggestions] = useState<SmartFillSuggestion[]>([]);
+  const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const suggestionsRef = useRef<HTMLDivElement>(null);
+
+  // Close suggestions dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (suggestionsRef.current && !suggestionsRef.current.contains(event.target as Node)) {
+        setShowSuggestions(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   // Form State for New Machine
   const [formData, setFormData] = useState({
     name: '',
@@ -98,12 +244,30 @@ export const MachineManagement: React.FC<MachineManagementProps> = ({ machines, 
     imageUrl: ''
   });
 
+  // Machine types with translated labels
   const machineTypes = [
-    { id: 'Excavator', label: 'Ekskavatör', icon: Hammer },
-    { id: 'Dozer', label: 'Dozer', icon: Tractor },
-    { id: 'Crane', label: 'Vinç', icon: Anchor },
-    { id: 'Loader', label: 'Yükleyici', icon: HardHat },
-    { id: 'Truck', label: 'Kamyon', icon: Truck },
+    { id: 'Excavator', label: t.types.excavator, icon: Hammer },
+    { id: 'Dozer', label: t.types.dozer, icon: Tractor },
+    { id: 'Crane', label: t.types.crane, icon: Anchor },
+    { id: 'Loader', label: t.types.loader, icon: HardHat },
+    { id: 'Truck', label: t.types.truck, icon: Truck },
+    { id: 'Grader', label: t.types.grader, icon: Shovel },
+    { id: 'Roller', label: t.types.roller, icon: CircleDot },
+    { id: 'Forklift', label: t.types.forklift, icon: Box },
+    { id: 'Backhoe', label: t.types.backhoe, icon: Construction },
+    { id: 'SkidSteer', label: t.types.skidSteer, icon: Boxes },
+    { id: 'Telehandler', label: t.types.telehandler, icon: ArrowUpDown },
+    { id: 'Compactor', label: t.types.compactor, icon: CircleDot },
+    { id: 'Paver', label: t.types.paver, icon: Factory },
+    { id: 'Trencher', label: t.types.trencher, icon: Shovel },
+    { id: 'Drill', label: t.types.drill, icon: Wrench },
+    { id: 'Generator', label: t.types.generator, icon: Power },
+    { id: 'Compressor', label: t.types.compressor, icon: Wind },
+    { id: 'ConcreteEquipment', label: t.types.concreteEquipment, icon: Factory },
+    { id: 'Lift', label: t.types.lift, icon: ArrowUpDown },
+    { id: 'Trailer', label: t.types.trailer, icon: Container },
+    { id: 'Scraper', label: t.types.scraper, icon: Shovel },
+    { id: 'Other', label: t.types.other, icon: Settings },
   ];
 
   const filteredMachines = machines.filter(m => 
@@ -132,31 +296,168 @@ export const MachineManagement: React.FC<MachineManagementProps> = ({ machines, 
     return images[Math.floor(Math.random() * images.length)];
   };
 
-  // --- Smart Fill Logic (KEEP EXISTING) ---
-  const handleSmartFill = () => {
+  // --- Smart Fill Logic using API ---
+
+  // Auto-search with debounce when user types in the search field
+  useEffect(() => {
+    if (!isAddModalOpen) return;
+
+    const query = `${formData.brand} ${formData.model}`.trim();
+    if (query.length < 2) {
+      setSmartFillSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
+    const debounceTimer = setTimeout(() => {
+      // Fetch suggestions
+      const fetchSuggestions = async () => {
+        setIsLoadingSuggestions(true);
+        try {
+          const response = await fetch(`${API_URL}/machine-reference/smart-fill?name=${encodeURIComponent(query)}`);
+          if (!response.ok) throw new Error('API error');
+
+          const data: SmartFillResponse = await response.json();
+          setSmartFillSuggestions(data.suggestions);
+          setShowSuggestions(data.suggestions.length > 0);
+        } catch (error) {
+          console.error('Fetch suggestions error:', error);
+          setSmartFillSuggestions([]);
+        } finally {
+          setIsLoadingSuggestions(false);
+        }
+      };
+      fetchSuggestions();
+    }, 300);
+
+    return () => clearTimeout(debounceTimer);
+  }, [formData.model, formData.brand, isAddModalOpen]);
+
+  // Fetch suggestions when user types (manual trigger)
+  const fetchSmartFillSuggestions = async () => {
+    const query = `${formData.brand} ${formData.model}`.trim();
+    if (query.length < 2) {
+      setSmartFillSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
+    setIsLoadingSuggestions(true);
+    try {
+      const response = await fetch(`${API_URL}/machine-reference/smart-fill?name=${encodeURIComponent(query)}`);
+      if (!response.ok) throw new Error('API error');
+
+      const data: SmartFillResponse = await response.json();
+      setSmartFillSuggestions(data.suggestions);
+      setShowSuggestions(data.suggestions.length > 0);
+    } catch (error) {
+      console.error('Fetch suggestions error:', error);
+      setSmartFillSuggestions([]);
+    } finally {
+      setIsLoadingSuggestions(false);
+    }
+  };
+
+  // Handle selecting a suggestion from the dropdown
+  const handleSelectSuggestion = (suggestion: SmartFillSuggestion) => {
+    // Determine machine type from category
+    let detectedType: Machine['type'] = formData.type || 'Excavator';
+    if (suggestion.category) {
+      const categorySlug = suggestion.category.toLowerCase().replace(/\s+/g, '-');
+      detectedType = CATEGORY_TO_TYPE_MAP[categorySlug] || detectedType;
+    }
+
+    const brandName = suggestion.brand || formData.brand || 'Bilinmiyor';
+    const modelName = suggestion.model || formData.model || '';
+    const randomSerial = `${brandName.substring(0, 3).toUpperCase()}-${Math.floor(Math.random() * 10000).toString().padStart(5, '0')}`;
+    const randomYear = (new Date().getFullYear() - Math.floor(Math.random() * 5)).toString();
+    const autoImage = getRandomImageForType(detectedType);
+
+    setFormData(prev => ({
+      ...prev,
+      brand: brandName,
+      model: modelName || prev.model,
+      type: detectedType,
+      year: prev.year || randomYear,
+      serialNumber: prev.serialNumber || randomSerial,
+      imageUrl: prev.imageUrl || autoImage,
+      name: prev.name || `${brandName} ${modelName || prev.model || 'Makine'} ${randomSerial.split('-')[1]}`
+    }));
+
+    setShowSuggestions(false);
+    setSmartFillSuggestions([]);
+  };
+
+  // Original handleSmartFill - now shows suggestions instead of auto-selecting
+  const handleSmartFill = async () => {
       if (!formData.model && !formData.brand) return;
       setIsAutoFilling(true);
-      setTimeout(() => {
-        const query = (formData.model + ' ' + formData.brand).toLowerCase();
-        const match = MACHINE_KNOWLEDGE_BASE.find(item => 
-            item.keywords.some(keyword => query.includes(keyword))
-        );
-        const randomSerial = `${match?.brand.substring(0,3).toUpperCase() || 'MCH'}-${Math.floor(Math.random()*10000).toString().padStart(5, '0')}`;
+
+      try {
+        const query = `${formData.brand} ${formData.model}`.trim();
+        const response = await fetch(`${API_URL}/machine-reference/smart-fill?name=${encodeURIComponent(query)}`);
+
+        if (!response.ok) {
+          throw new Error('API error');
+        }
+
+        const data: SmartFillResponse = await response.json();
+
+        // If we have suggestions, show them in the dropdown
+        if (data.suggestions.length > 0) {
+          setSmartFillSuggestions(data.suggestions);
+          setShowSuggestions(true);
+          setIsAutoFilling(false);
+          return;
+        }
+
+        // If no suggestions, fallback to auto-fill
+        const matchedBrand = data.matchedBrand;
+        const matchedModel = data.matchedModels[0];
+        const matchedCategory = data.matchedCategory;
+
+        // Determine machine type from category
+        let detectedType: Machine['type'] = formData.type || 'Excavator';
+        if (matchedCategory?.slug) {
+          detectedType = CATEGORY_TO_TYPE_MAP[matchedCategory.slug] || detectedType;
+        } else if (matchedModel?.category?.slug) {
+          detectedType = CATEGORY_TO_TYPE_MAP[matchedModel.category.slug] || detectedType;
+        }
+
+        // Generate random values for missing fields
+        const brandName = matchedBrand?.name || formData.brand || 'Bilinmiyor';
+        const modelName = matchedModel?.name || formData.model || '';
+        const randomSerial = `${brandName.substring(0,3).toUpperCase()}-${Math.floor(Math.random()*10000).toString().padStart(5, '0')}`;
         const randomYear = (new Date().getFullYear() - Math.floor(Math.random() * 5)).toString();
-        const detectedType = (match?.type as any) || prevFormData.type || 'Excavator';
-        const autoImage = match?.image || getRandomImageForType(detectedType);
+        const autoImage = getRandomImageForType(detectedType);
+
         setFormData(prev => ({
             ...prev,
-            brand: match?.brand || prev.brand || 'Bilinmiyor',
+            brand: brandName,
+            model: modelName || prev.model,
             type: detectedType,
             year: prev.year || randomYear,
             serialNumber: prev.serialNumber || randomSerial,
             imageUrl: prev.imageUrl || autoImage,
-            name: prev.name || `${match?.brand || 'Yeni'} ${prev.model || 'Makine'} ${randomSerial.split('-')[1]}`
+            name: prev.name || `${brandName} ${modelName || prev.model || 'Makine'} ${randomSerial.split('-')[1]}`
         }));
+      } catch (error) {
+        console.error('Smart fill error:', error);
+        // Fallback to basic auto-fill
+        const randomSerial = `MCH-${Math.floor(Math.random()*10000).toString().padStart(5, '0')}`;
+        const randomYear = (new Date().getFullYear() - Math.floor(Math.random() * 5)).toString();
+        const autoImage = getRandomImageForType(formData.type || 'Excavator');
+
+        setFormData(prev => ({
+            ...prev,
+            year: prev.year || randomYear,
+            serialNumber: prev.serialNumber || randomSerial,
+            imageUrl: prev.imageUrl || autoImage,
+            name: prev.name || `${prev.brand || 'Yeni'} ${prev.model || 'Makine'} ${randomSerial.split('-')[1]}`
+        }));
+      } finally {
         setIsAutoFilling(false);
-      }, 800);
-      const prevFormData = formData; 
+      }
   };
 
   const handleRefreshImage = () => {
@@ -268,16 +569,16 @@ export const MachineManagement: React.FC<MachineManagementProps> = ({ machines, 
                     <Zap size={20} fill={isDiscountActive ? "currentColor" : "none"} />
                 </div>
                 <div>
-                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Abonelik Modeli</p>
+                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">{t.subscription.title}</p>
                     <div className="flex items-center gap-2">
-                        <span className="font-bold text-smart-navy dark:text-white">{t.payAsYouGo}</span>
+                        <span className="font-bold text-smart-navy dark:text-white">{t.subscription.payAsYouGo}</span>
                         {isDiscountActive ? (
                              <span className="text-xs bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 px-2 py-0.5 rounded font-bold border border-green-200 dark:border-green-800 flex items-center gap-1">
-                                <Percent size={10} /> %10 İndirim Aktif
+                                <Percent size={10} /> {t.subscription.discountEarned}
                              </span>
                         ) : (
                             <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">
-                                Hedef: {DISCOUNT_THRESHOLD}+ Makine
+                                {t.subscription.totalMachines}: {DISCOUNT_THRESHOLD}+
                             </span>
                         )}
                     </div>
@@ -355,10 +656,10 @@ export const MachineManagement: React.FC<MachineManagementProps> = ({ machines, 
                       <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 font-medium">{machine.serialNumber}</p>
                     </div>
                     
-                    <button 
-                        onClick={(e) => { e.stopPropagation(); setEditingMachine({...machine}); }} 
+                    <button
+                        onClick={(e) => { e.stopPropagation(); setEditingMachine({...machine}); }}
                         className="text-gray-400 hover:text-smart-navy dark:hover:text-white p-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-full transition-colors"
-                        title="Tümünü Düzenle"
+                        title={t.actions.editAll}
                     >
                       <Pencil size={18} />
                     </button>
@@ -367,12 +668,12 @@ export const MachineManagement: React.FC<MachineManagementProps> = ({ machines, 
                    {/* Assignments Section */}
                    <div className="mt-4 mb-2" onClick={(e) => e.stopPropagation()}>
                         <div className="flex justify-between items-center mb-2">
-                            <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Operasyonel Atamalar</p>
+                            <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">{t.operations.title}</p>
                             {!isQuickAssign && (
-                                <button 
-                                    onClick={(e) => { e.stopPropagation(); handleQuickAssignStart(machine); }} 
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); handleQuickAssignStart(machine); }}
                                     className="text-gray-400 hover:text-smart-navy dark:hover:text-white p-1 rounded-md hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
-                                    title="Hızlı Ata"
+                                    title={t.operations.quickAssign}
                                 >
                                     <UserCog size={14} />
                                 </button>
@@ -381,30 +682,30 @@ export const MachineManagement: React.FC<MachineManagementProps> = ({ machines, 
 
                         {isQuickAssign ? (
                              <div className="bg-blue-50/50 dark:bg-blue-900/20 p-2 rounded-lg border border-blue-100 dark:border-blue-800 space-y-2 animate-fadeIn">
-                                <select 
+                                <select
                                     value={quickAssignData.assignedOperatorId}
                                     onChange={(e) => setQuickAssignData({...quickAssignData, assignedOperatorId: e.target.value})}
                                     onClick={(e) => e.stopPropagation()}
                                     className="w-full text-xs p-1.5 rounded border border-blue-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:outline-none focus:border-smart-navy"
                                 >
-                                    <option value="">Operatör Seçin</option>
+                                    <option value="">{t.modal.selectOperator}</option>
                                     {operators.map(op => <option key={op.id} value={op.id}>{op.name}</option>)}
                                 </select>
-                                <select 
+                                <select
                                     value={quickAssignData.assignedChecklistId}
                                     onChange={(e) => setQuickAssignData({...quickAssignData, assignedChecklistId: e.target.value})}
                                     onClick={(e) => e.stopPropagation()}
                                     className="w-full text-xs p-1.5 rounded border border-blue-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:outline-none focus:border-smart-navy"
                                 >
-                                    <option value="">Liste Seçin</option>
+                                    <option value="">{t.modal.selectChecklist}</option>
                                     {checklistTemplates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                                 </select>
                                 <div className="flex gap-2 mt-1">
                                     <button onClick={(e) => { e.stopPropagation(); handleQuickAssignSave(machine); }} className="flex-1 bg-smart-success text-white text-xs py-1 rounded font-bold hover:bg-green-700">
-                                        <Check size={12} className="inline mr-1" /> Kaydet
+                                        <Check size={12} className="inline mr-1" /> {t.modal.save}
                                     </button>
                                     <button onClick={(e) => { e.stopPropagation(); setQuickAssignId(null); }} className="flex-1 bg-gray-200 dark:bg-slate-700 text-gray-600 dark:text-gray-300 text-xs py-1 rounded font-bold hover:bg-gray-300 dark:hover:bg-slate-600">
-                                        <X size={12} className="inline mr-1" /> İptal
+                                        <X size={12} className="inline mr-1" /> {t.modal.cancel}
                                     </button>
                                 </div>
                              </div>
@@ -413,17 +714,17 @@ export const MachineManagement: React.FC<MachineManagementProps> = ({ machines, 
                                 {/* Operator Badge */}
                                 <div className={`inline-flex items-center gap-1.5 pl-1 pr-3 py-1 rounded-full text-[10px] font-semibold border transition-colors ${operator ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 border-indigo-100 dark:border-indigo-800' : 'bg-slate-50 dark:bg-slate-700/50 text-slate-400 dark:text-slate-500 border-slate-100 dark:border-slate-700'}`}>
                                     <div className={`w-5 h-5 rounded-full flex items-center justify-center ${operator ? 'bg-indigo-100 dark:bg-indigo-900' : 'bg-slate-200 dark:bg-slate-600'}`}>
-                                    <User size={12} strokeWidth={2.5} className={operator ? "text-indigo-600 dark:text-indigo-300" : "text-slate-500 dark:text-slate-400"} /> 
+                                    <User size={12} strokeWidth={2.5} className={operator ? "text-indigo-600 dark:text-indigo-300" : "text-slate-500 dark:text-slate-400"} />
                                     </div>
-                                    <span className="truncate max-w-[100px]">{operator ? operator.name : 'Operatör Yok'}</span>
+                                    <span className="truncate max-w-[100px]">{operator ? operator.name : t.modal.noOperator}</span>
                                 </div>
-                                
+
                                 {/* Checklist Badge */}
                                 <div className={`inline-flex items-center gap-1.5 pl-1 pr-3 py-1 rounded-full text-[10px] font-semibold border transition-colors ${template ? 'bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 border-orange-100 dark:border-orange-800' : 'bg-slate-50 dark:bg-slate-700/50 text-slate-400 dark:text-slate-500 border-slate-100 dark:border-slate-700'}`}>
                                     <div className={`w-5 h-5 rounded-full flex items-center justify-center ${template ? 'bg-orange-100 dark:bg-orange-900' : 'bg-slate-200 dark:bg-slate-600'}`}>
-                                        <FileCheck size={12} strokeWidth={2.5} className={template ? "text-orange-600 dark:text-orange-300" : "text-slate-500 dark:text-slate-400"} /> 
+                                        <FileCheck size={12} strokeWidth={2.5} className={template ? "text-orange-600 dark:text-orange-300" : "text-slate-500 dark:text-slate-400"} />
                                     </div>
-                                    <span className="truncate max-w-[120px]">{template ? template.name : 'Liste Yok'}</span>
+                                    <span className="truncate max-w-[120px]">{template ? template.name : t.actions.noList}</span>
                                 </div>
                             </div>
                         )}
@@ -433,14 +734,14 @@ export const MachineManagement: React.FC<MachineManagementProps> = ({ machines, 
                     <div className="flex items-center gap-2">
                       <Fuel size={16} className="text-smart-yellow" />
                       <div>
-                        <p className="text-[10px] text-gray-400 uppercase font-bold">Motor Saati</p>
-                        <p className="font-bold text-gray-800 dark:text-gray-200">{machine.engineHours}s</p>
+                        <p className="text-[10px] text-gray-400 uppercase font-bold">{t.stats.engineHours}</p>
+                        <p className="font-bold text-gray-800 dark:text-gray-200">{machine.engineHours}{t.stats.hours}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
                       <Calendar size={16} className="text-smart-yellow" />
                       <div>
-                        <p className="text-[10px] text-gray-400 uppercase font-bold">Son Bakım</p>
+                        <p className="text-[10px] text-gray-400 uppercase font-bold">{t.stats.lastMaintenance}</p>
                         <p className="font-bold text-gray-800 dark:text-gray-200">{machine.lastService}</p>
                       </div>
                     </div>
@@ -459,79 +760,131 @@ export const MachineManagement: React.FC<MachineManagementProps> = ({ machines, 
                 <div>
                     <h3 className="text-2xl font-bold text-smart-navy dark:text-white">{t.modal.title}</h3>
                 </div>
-                <button onClick={() => setIsAddModalOpen(false)} className="text-gray-400 hover:text-red-600 transition-colors">
+                <button onClick={() => { setIsAddModalOpen(false); setShowSuggestions(false); setSmartFillSuggestions([]); }} className="text-gray-400 hover:text-red-600 transition-colors">
                     <X size={24} />
                 </button>
             </div>
             
             <form onSubmit={handleAddToCart} className="p-8 space-y-8">
-              {/* Machine Type Selector */}
+              {/* Machine Type Selector - Dropdown */}
               <div>
-                <label className="block text-sm font-bold text-smart-navy dark:text-gray-300 mb-4 uppercase tracking-wide">Makine Tipi Seçin</label>
-                <div className="grid grid-cols-3 md:grid-cols-5 gap-3">
+                <label className="block text-sm font-bold text-smart-navy dark:text-gray-300 mb-2 uppercase tracking-wide">{t.modal.selectType}</label>
+                <div className="relative">
+                  <select
+                    value={formData.type}
+                    onChange={(e) => setFormData({...formData, type: e.target.value as Machine['type']})}
+                    className="w-full px-4 py-3 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-smart-navy/20 bg-white text-gray-900 dark:bg-slate-700 dark:text-white outline-none appearance-none cursor-pointer font-medium"
+                  >
                     {machineTypes.map((type) => (
-                        <button
-                            key={type.id}
-                            type="button"
-                            onClick={() => setFormData({...formData, type: type.id as any})}
-                            className={`flex flex-col items-center justify-center p-4 rounded-xl border transition-all duration-200 group relative overflow-hidden ${
-                                formData.type === type.id 
-                                ? 'border-smart-navy dark:border-white bg-smart-navy/5 dark:bg-white/10 ring-2 ring-smart-navy dark:ring-white ring-offset-2 dark:ring-offset-slate-800' 
-                                : 'border-gray-200 dark:border-slate-600 hover:border-smart-yellow hover:bg-yellow-50 dark:hover:bg-yellow-900/20'
-                            }`}
-                        >
-                            <div className={`mb-3 p-3 rounded-full transition-colors ${
-                                formData.type === type.id 
-                                ? 'bg-smart-navy dark:bg-white text-white dark:text-slate-900 shadow-lg shadow-blue-900/20' 
-                                : 'bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-gray-400 group-hover:bg-white group-hover:text-smart-navy'
-                            }`}>
-                                <type.icon size={24} strokeWidth={1.5} />
-                            </div>
-                            <span className={`text-xs font-bold text-center ${formData.type === type.id ? 'text-smart-navy dark:text-white' : 'text-gray-500 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-white'}`}>
-                                {type.label}
-                            </span>
-                            {formData.type === type.id && (
-                                <div className="absolute top-2 right-2 text-smart-navy dark:text-white">
-                                    <CheckCircle size={14} fill="currentColor" className="text-white dark:text-slate-900" />
-                                </div>
-                            )}
-                        </button>
+                      <option key={type.id} value={type.id}>
+                        {type.label}
+                      </option>
                     ))}
+                  </select>
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="m6 9 6 6 6-6"/>
+                    </svg>
+                  </div>
                 </div>
               </div>
 
               {/* Basic Info Section */}
               <div className="space-y-4">
                 <div className="flex justify-between items-center border-b border-gray-100 dark:border-slate-700 pb-2">
-                    <h4 className="text-sm font-bold text-smart-navy dark:text-white uppercase tracking-wide">Teknik Detaylar</h4>
-                    {isAutoFilling && <span className="text-xs text-smart-yellow font-bold animate-pulse flex items-center gap-1"><Sparkles size={12}/> Veriler Getiriliyor...</span>}
+                    <h4 className="text-sm font-bold text-smart-navy dark:text-white uppercase tracking-wide">{t.modal.technicalDetails}</h4>
+                    {isAutoFilling && <span className="text-xs text-smart-yellow font-bold animate-pulse flex items-center gap-1"><Sparkles size={12}/> {t.modal.fetchingData}</span>}
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5 relative">
                     
-                    <div className="col-span-2">
-                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Model / Tanım</label>
+                    <div className="col-span-2 relative">
+                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t.modal.searchBrandModel}</label>
                          <div className="flex gap-2">
-                            <input 
-                                required
-                                type="text" 
-                                value={formData.model}
-                                onChange={(e) => setFormData({...formData, model: e.target.value})}
-                                className="flex-1 px-4 py-3 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-smart-navy/20 bg-white text-gray-900 dark:bg-slate-700 dark:text-white outline-none"
-                                placeholder="Örn: 320 GC, D155, Actros..."
-                            />
+                            <div className="flex-1 relative">
+                              <input
+                                  required
+                                  type="text"
+                                  value={formData.model}
+                                  onChange={(e) => setFormData({...formData, model: e.target.value})}
+                                  onFocus={() => smartFillSuggestions.length > 0 && setShowSuggestions(true)}
+                                  className="w-full px-4 py-3 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-smart-navy/20 bg-white text-gray-900 dark:bg-slate-700 dark:text-white outline-none"
+                                  placeholder={t.modal.searchPlaceholder}
+                              />
+                              {isLoadingSuggestions && (
+                                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                  <Loader2 size={18} className="animate-spin text-gray-400" />
+                                </div>
+                              )}
+                            </div>
                             <button
                                 type="button"
                                 onClick={handleSmartFill}
-                                disabled={isAutoFilling || !formData.model}
+                                disabled={isAutoFilling || (!formData.model && !formData.brand)}
                                 className="bg-smart-yellow text-smart-navy px-4 rounded-lg font-bold hover:bg-yellow-400 transition-colors disabled:opacity-50 flex items-center gap-2 shadow-sm"
                                 title="Model isminden bilgileri otomatik getir"
                             >
-                                {isAutoFilling ? <Loader2 className="animate-spin" /> : <Sparkles />}
-                                <span className="hidden sm:inline">{t.modal.smartFill}</span>
+                                {isAutoFilling ? <Loader2 className="animate-spin" /> : <Search />}
+                                <span className="hidden sm:inline">{t.modal.search}</span>
                             </button>
                          </div>
-                         <p className="text-xs text-gray-400 mt-1">Marka ve tipi otomatik bulmak için model adını yazıp sihirli değneğe tıklayın.</p>
+                         <p className="text-xs text-gray-400 mt-1">{t.modal.searchHint}</p>
+
+                         {/* Suggestions Dropdown */}
+                         {showSuggestions && smartFillSuggestions.length > 0 && (
+                           <div ref={suggestionsRef} className="absolute z-50 w-full mt-1 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 rounded-xl shadow-2xl max-h-80 overflow-y-auto">
+                             <div className="sticky top-0 bg-gray-50 dark:bg-slate-900 px-4 py-2 border-b border-gray-100 dark:border-slate-700 flex justify-between items-center">
+                               <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                                 {smartFillSuggestions.length} {t.modal.resultsFound}
+                               </span>
+                               <button
+                                 type="button"
+                                 onClick={() => setShowSuggestions(false)}
+                                 className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                               >
+                                 <X size={16} />
+                               </button>
+                             </div>
+                             {smartFillSuggestions.map((suggestion, index) => (
+                               <button
+                                 key={`${suggestion.brandId}-${suggestion.modelId || index}`}
+                                 type="button"
+                                 onClick={() => handleSelectSuggestion(suggestion)}
+                                 className="w-full px-4 py-3 text-left hover:bg-smart-yellow/10 dark:hover:bg-slate-700 border-b border-gray-50 dark:border-slate-700 last:border-0 transition-colors group"
+                               >
+                                 <div className="flex items-center justify-between">
+                                   <div className="flex-1">
+                                     <p className="font-bold text-smart-navy dark:text-white group-hover:text-smart-navy">
+                                       {suggestion.fullName}
+                                     </p>
+                                     <div className="flex items-center gap-2 mt-1">
+                                       {suggestion.category && (
+                                         <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium">
+                                           {suggestion.category}
+                                         </span>
+                                       )}
+                                       <span className="text-xs text-gray-400">
+                                         {suggestion.type === 'model' ? 'Model' : t.modal.modelBrandCategory}
+                                       </span>
+                                     </div>
+                                   </div>
+                                   <div className="flex items-center gap-2">
+                                     <span className={`text-xs font-bold px-2 py-1 rounded ${
+                                       suggestion.confidence >= 0.9
+                                         ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
+                                         : suggestion.confidence >= 0.7
+                                           ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300'
+                                           : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
+                                     }`}>
+                                       %{Math.round(suggestion.confidence * 100)}
+                                     </span>
+                                     <Check size={16} className="text-gray-300 group-hover:text-smart-success" />
+                                   </div>
+                                 </div>
+                               </button>
+                             ))}
+                           </div>
+                         )}
                     </div>
 
                     <div>
@@ -571,17 +924,17 @@ export const MachineManagement: React.FC<MachineManagementProps> = ({ machines, 
                                 type="button"
                                 onClick={() => setFormData({...formData, serialNumber: `GEN-${Math.floor(Math.random()*100000)}`})}
                                 className="p-3 text-gray-400 hover:text-smart-navy border border-gray-300 dark:border-slate-600 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700"
-                                title="Rastgele Üret"
+                                title={t.modal.generateRandom}
                             >
                                 <RefreshCw size={18} />
                             </button>
                         </div>
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Üretim Yılı</label>
-                        <input 
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t.modal.year}</label>
+                        <input
                         required
-                        type="number" 
+                        type="number"
                         value={formData.year}
                         onChange={(e) => setFormData({...formData, year: e.target.value})}
                         className="w-full px-4 py-3 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-smart-navy/20 bg-white text-gray-900 dark:bg-slate-700 dark:text-white outline-none"
@@ -590,10 +943,10 @@ export const MachineManagement: React.FC<MachineManagementProps> = ({ machines, 
                     </div>
                     <div className="col-span-2">
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 flex justify-between">
-                            <span>Görsel URL</span>
+                            <span>{t.modal.imageUrl}</span>
                             {formData.imageUrl && (
                                 <button type="button" onClick={handleRefreshImage} className="text-xs text-blue-600 dark:text-blue-400 flex items-center gap-1 hover:underline">
-                                    <RefreshCw size={12}/> Fotoğrafı Değiştir
+                                    <RefreshCw size={12}/> {t.modal.changeImage}
                                 </button>
                             )}
                         </label>
@@ -616,7 +969,7 @@ export const MachineManagement: React.FC<MachineManagementProps> = ({ machines, 
                                         onClick={handleRefreshImage}
                                         className="bg-white/20 hover:bg-white/40 backdrop-blur text-white px-4 py-2 rounded-full font-bold flex items-center gap-2 transition-colors"
                                     >
-                                        <RefreshCw size={16} /> Farklı Bir Görsel Bul
+                                        <RefreshCw size={16} /> {t.modal.findDifferentImage}
                                     </button>
                                 </div>
                             </div>
@@ -631,13 +984,13 @@ export const MachineManagement: React.FC<MachineManagementProps> = ({ machines, 
                     <div className="bg-smart-navy dark:bg-slate-700 p-1.5 rounded-md text-white">
                         <Briefcase size={18} />
                     </div>
-                    <h4 className="text-sm font-bold text-smart-navy dark:text-white uppercase tracking-wider">Operasyonel Atamalar</h4>
+                    <h4 className="text-sm font-bold text-smart-navy dark:text-white uppercase tracking-wider">{t.modal.operationalAssignments}</h4>
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-2 uppercase flex items-center gap-1">
-                            <User size={14}/> Operatör Seçimi
+                            <User size={14}/> {t.modal.operatorSelection}
                         </label>
                         <div className="relative">
                             <select 
@@ -645,7 +998,7 @@ export const MachineManagement: React.FC<MachineManagementProps> = ({ machines, 
                                 onChange={(e) => setFormData({...formData, assignedOperatorId: e.target.value})}
                                 className="w-full pl-4 pr-10 py-3 text-sm border border-gray-300 dark:border-slate-600 rounded-lg bg-white text-gray-900 dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-smart-navy/20 outline-none appearance-none cursor-pointer hover:border-smart-navy transition-colors"
                             >
-                                <option value="">Atama Yapılmadı (Daha Sonra)</option>
+                                <option value="">{t.modal.notAssigned}</option>
                                 {operators.map(op => (
                                     <option key={op.id} value={op.id}>{op.name} — {op.licenseType.join(', ')}</option>
                                 ))}
@@ -657,7 +1010,7 @@ export const MachineManagement: React.FC<MachineManagementProps> = ({ machines, 
                     </div>
                     <div>
                         <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-2 uppercase flex items-center gap-1">
-                            <FileCheck size={14}/> Kontrol Listesi Şablonu
+                            <FileCheck size={14}/> {t.modal.checklistSelection}
                         </label>
                         <div className="relative">
                             <select 
@@ -665,7 +1018,7 @@ export const MachineManagement: React.FC<MachineManagementProps> = ({ machines, 
                                 onChange={(e) => setFormData({...formData, assignedChecklistId: e.target.value})}
                                 className="w-full pl-4 pr-10 py-3 text-sm border border-gray-300 dark:border-slate-600 rounded-lg bg-white text-gray-900 dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-smart-navy/20 outline-none appearance-none cursor-pointer hover:border-smart-navy transition-colors"
                             >
-                                <option value="">Şablon Seçilmedi</option>
+                                <option value="">{t.modal.notAssigned}</option>
                                 {checklistTemplates.map(tpl => (
                                     <option key={tpl.id} value={tpl.id}>{tpl.name} ({tpl.itemsCount} Madde)</option>
                                 ))}
@@ -816,7 +1169,7 @@ export const MachineManagement: React.FC<MachineManagementProps> = ({ machines, 
               {/* Basic Info */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Makine Adı</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t.modal.machineName}</label>
                   <input
                     type="text"
                     required
@@ -826,7 +1179,7 @@ export const MachineManagement: React.FC<MachineManagementProps> = ({ machines, 
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Marka</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t.modal.brand}</label>
                   <input
                     type="text"
                     required
@@ -836,7 +1189,7 @@ export const MachineManagement: React.FC<MachineManagementProps> = ({ machines, 
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Model</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t.modal.model}</label>
                   <input
                     type="text"
                     required
@@ -846,7 +1199,7 @@ export const MachineManagement: React.FC<MachineManagementProps> = ({ machines, 
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Seri No</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t.modal.serialNumber}</label>
                   <input
                     type="text"
                     required
@@ -856,7 +1209,7 @@ export const MachineManagement: React.FC<MachineManagementProps> = ({ machines, 
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Üretim Yılı</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t.modal.year}</label>
                   <input
                     type="number"
                     required
@@ -866,7 +1219,7 @@ export const MachineManagement: React.FC<MachineManagementProps> = ({ machines, 
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Motor Saati</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t.modal.engineHours}</label>
                   <input
                     type="number"
                     required
@@ -879,7 +1232,7 @@ export const MachineManagement: React.FC<MachineManagementProps> = ({ machines, 
 
               {/* Status */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Durum</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t.modal.status}</label>
                 <select
                   value={editingMachine.status}
                   onChange={(e) => setEditingMachine({...editingMachine, status: e.target.value as MachineStatus})}
@@ -909,7 +1262,7 @@ export const MachineManagement: React.FC<MachineManagementProps> = ({ machines, 
               <div className="bg-gray-50 dark:bg-slate-700 p-6 rounded-xl border border-gray-200 dark:border-slate-600 space-y-4">
                 <h4 className="text-sm font-bold text-smart-navy dark:text-white uppercase tracking-wider flex items-center gap-2">
                   <Briefcase size={16} />
-                  Operasyonel Atamalar
+                  {t.modal.operationalAssignments}
                 </h4>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -922,7 +1275,7 @@ export const MachineManagement: React.FC<MachineManagementProps> = ({ machines, 
                       onChange={(e) => setEditingMachine({...editingMachine, assignedOperatorId: e.target.value || undefined})}
                       className="w-full px-4 py-3 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-smart-navy/20 bg-white dark:bg-slate-700 text-gray-900 dark:text-white outline-none"
                     >
-                      <option value="">Operatör Seçilmedi</option>
+                      <option value="">{t.modal.notAssigned}</option>
                       {operators.map(op => (
                         <option key={op.id} value={op.id}>{op.name}</option>
                       ))}
@@ -937,7 +1290,7 @@ export const MachineManagement: React.FC<MachineManagementProps> = ({ machines, 
                       onChange={(e) => setEditingMachine({...editingMachine, assignedChecklistId: e.target.value || undefined})}
                       className="w-full px-4 py-3 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-smart-navy/20 bg-white dark:bg-slate-700 text-gray-900 dark:text-white outline-none"
                     >
-                      <option value="">Liste Seçilmedi</option>
+                      <option value="">{t.modal.notAssigned}</option>
                       {checklistTemplates.map(tpl => (
                         <option key={tpl.id} value={tpl.id}>{tpl.name}</option>
                       ))}

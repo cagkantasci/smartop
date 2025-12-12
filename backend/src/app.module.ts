@@ -12,6 +12,7 @@ import { JobsModule } from './modules/jobs/jobs.module';
 import { EventsModule } from './modules/events/events.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { UploadsModule } from './modules/uploads/uploads.module';
+import { MachineReferenceModule } from './modules/machine-reference/machine-reference.module';
 import { AppController } from './app.controller';
 
 @Module({
@@ -48,6 +49,7 @@ import { AppController } from './app.controller';
     EventsModule,
     NotificationsModule,
     UploadsModule,
+    MachineReferenceModule,
   ],
   controllers: [AppController],
   providers: [
