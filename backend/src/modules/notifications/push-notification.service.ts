@@ -50,28 +50,29 @@ export class PushNotificationService implements OnModuleInit {
     }
 
     try {
-      let serviceAccount: admin.ServiceAccount;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let rawCredentials: any;
 
       if (serviceAccountBase64) {
         // Decode from Base64 (recommended for Coolify/Docker)
         const decoded = Buffer.from(serviceAccountBase64, 'base64').toString('utf-8');
-        serviceAccount = JSON.parse(decoded);
+        rawCredentials = JSON.parse(decoded);
         this.logger.debug('Firebase credentials loaded from Base64');
       } else {
         // Parse raw JSON (for local development)
-        serviceAccount = JSON.parse(serviceAccountJson!);
+        rawCredentials = JSON.parse(serviceAccountJson!);
         this.logger.debug('Firebase credentials loaded from raw JSON');
       }
 
-      // Fix escaped newlines in private_key
+      // Fix escaped newlines in private_key (JSON uses snake_case)
       // .env files don't process escape sequences, so \n is stored as literal backslash-n
-      if (serviceAccount.private_key && typeof serviceAccount.private_key === 'string') {
-        serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
+      if (rawCredentials.private_key && typeof rawCredentials.private_key === 'string') {
+        rawCredentials.private_key = rawCredentials.private_key.replace(/\\n/g, '\n');
       }
 
       if (!admin.apps.length) {
         admin.initializeApp({
-          credential: admin.credential.cert(serviceAccount),
+          credential: admin.credential.cert(rawCredentials as admin.ServiceAccount),
         });
       }
 
