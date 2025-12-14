@@ -40,15 +40,28 @@ export class PushNotificationService implements OnModuleInit {
   }
 
   private initializeFirebase() {
+    // Support both Base64 encoded and raw JSON formats
+    const serviceAccountBase64 = this.configService.get<string>('FIREBASE_SERVICE_ACCOUNT_BASE64');
     const serviceAccountJson = this.configService.get<string>('FIREBASE_SERVICE_ACCOUNT');
 
-    if (!serviceAccountJson) {
+    if (!serviceAccountBase64 && !serviceAccountJson) {
       this.logger.warn('Firebase service account not configured. Push notifications disabled.');
       return;
     }
 
     try {
-      const serviceAccount = JSON.parse(serviceAccountJson);
+      let serviceAccount: admin.ServiceAccount;
+
+      if (serviceAccountBase64) {
+        // Decode from Base64 (recommended for Coolify/Docker)
+        const decoded = Buffer.from(serviceAccountBase64, 'base64').toString('utf-8');
+        serviceAccount = JSON.parse(decoded);
+        this.logger.debug('Firebase credentials loaded from Base64');
+      } else {
+        // Parse raw JSON (for local development)
+        serviceAccount = JSON.parse(serviceAccountJson!);
+        this.logger.debug('Firebase credentials loaded from raw JSON');
+      }
 
       // Fix escaped newlines in private_key
       // .env files don't process escape sequences, so \n is stored as literal backslash-n
