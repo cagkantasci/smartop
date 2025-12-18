@@ -2,16 +2,23 @@ import axios, { AxiosInstance, InternalAxiosRequestConfig } from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 
-// Use localhost for web, local IP for native (mobile needs IP to reach dev machine)
+// Ensure API URL always ends with /api/v1
 const getApiUrl = () => {
-  if (process.env.EXPO_PUBLIC_API_URL) {
-    return process.env.EXPO_PUBLIC_API_URL;
+  let baseUrl = process.env.EXPO_PUBLIC_API_URL;
+
+  if (!baseUrl) {
+    // Web runs in browser on same machine, can use localhost
+    // Native runs on device/emulator, needs IP address
+    baseUrl = Platform.OS === 'web'
+      ? 'http://localhost:3000'
+      : 'http://192.168.0.13:3000';
   }
-  // Web runs in browser on same machine, can use localhost
-  // Native runs on device/emulator, needs IP address
-  return Platform.OS === 'web'
-    ? 'http://localhost:3000/api/v1'
-    : 'http://192.168.0.13:3000/api/v1';
+
+  // If URL doesn't end with /api/v1, append it
+  if (!baseUrl.endsWith('/api/v1')) {
+    return baseUrl.replace(/\/$/, '') + '/api/v1';
+  }
+  return baseUrl;
 };
 
 const API_URL = getApiUrl();
