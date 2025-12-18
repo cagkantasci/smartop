@@ -15,7 +15,7 @@
         "simulator": true
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": ""
+        "EXPO_PUBLIC_API_URL": "http://localhost:3000"
       }
     },
     "preview": {
@@ -24,7 +24,7 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": ""
+        "EXPO_PUBLIC_API_URL": "https://api.smartop.com.tr"
       }
     },
     "production": {
@@ -32,7 +32,7 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://smartop.com.tr/api/v1"
+        "EXPO_PUBLIC_API_URL": "https://api.smartop.com.tr"
       }
     }
   },

@@ -65,11 +65,10 @@ const DICTIONARY: Record<Language, TranslationDictionary> = {
         portalLogin: 'Portal Girişi'
       },
       hero: {
-        badge: '🚀 İş Makineleri Yönetiminde Yeni Çağ',
         title: 'Saha Operasyonlarını',
         titleHighlight: 'Dijitalleştirin.',
         subtitle: 'Kağıt formlardan kurtulun. Ekskavatör, vinç ve kamyonlarınızı cebinizden yönetin. Arızaları %40 azaltın, verimliliği artırın.',
-        startFree: 'Ücretsiz Başlayın',
+        startFree: 'Ücretsiz Deneyin',
         requestDemo: 'Demo Talep Et'
       },
       roi: {
@@ -100,10 +99,38 @@ const DICTIONARY: Record<Language, TranslationDictionary> = {
           desc: 'Hangi parça ne sıklıkla arıza yapıyor? Hangi operatör daha verimli? Hepsi tek ekranda.'
         }
       },
-      cta: {
-        title: 'Filo Yönetimini Şimdi Başlatın',
-        subtitle: 'Kredi kartı gerekmeden 14 gün boyunca tüm özellikleri ücretsiz deneyin.',
-        button: 'Hemen Kayıt Olun'
+      pricing: {
+        title: 'Fiyatlandırma',
+        subtitle: 'İşletmenizin büyüklüğüne uygun esnek planlar.',
+        popular: 'En Popüler',
+        trial: {
+          name: 'Ücretsiz Deneme',
+          desc: 'Tüm özellikleri test edin',
+          price: 'Ücretsiz',
+          period: '7 gün',
+          features: ['Sınırsız araç ekleme', 'Tüm özellikler açık', 'Teknik destek', 'Kredi kartı gerekmez'],
+          button: 'Hemen Başlayın'
+        },
+        starter: {
+          name: 'Başlangıç',
+          desc: '10 araca kadar ideal',
+          period: '/ay',
+          features: ['10 araca kadar', 'Tüm özellikler', 'E-posta desteği', 'Aylık raporlar'],
+          button: 'Planı Seçin'
+        },
+        pro: {
+          name: 'Profesyonel',
+          desc: 'Büyüyen filolar için',
+          period: '/araç/ay',
+          range: '10-50 araç arası',
+          features: ['50 araca kadar', 'Öncelikli destek', 'Gelişmiş raporlar', 'API erişimi'],
+          button: 'Planı Seçin'
+        },
+        enterprise: {
+          text: '50+ araç için özel fiyatlandırma:',
+          perVehicle: 'araç',
+          contact: '- Bizimle iletişime geçin.'
+        }
       },
       footer: {
         privacy: 'Gizlilik Politikası',
@@ -224,11 +251,10 @@ const DICTIONARY: Record<Language, TranslationDictionary> = {
         portalLogin: 'Portal Login'
       },
       hero: {
-        badge: '🚀 New Era in Heavy Equipment Management',
         title: 'Digitize Your',
         titleHighlight: 'Field Operations.',
         subtitle: 'Say goodbye to paper forms. Manage your excavators, cranes and trucks from your pocket. Reduce breakdowns by 40%, increase efficiency.',
-        startFree: 'Start Free',
+        startFree: 'Free Trial',
         requestDemo: 'Request Demo'
       },
       roi: {
@@ -259,10 +285,38 @@ const DICTIONARY: Record<Language, TranslationDictionary> = {
           desc: 'Which part breaks down most frequently? Which operator is more efficient? All on one screen.'
         }
       },
-      cta: {
-        title: 'Start Fleet Management Now',
-        subtitle: 'Try all features free for 14 days without a credit card.',
-        button: 'Sign Up Now'
+      pricing: {
+        title: 'Pricing',
+        subtitle: 'Flexible plans for businesses of all sizes.',
+        popular: 'Most Popular',
+        trial: {
+          name: 'Free Trial',
+          desc: 'Test all features',
+          price: 'Free',
+          period: '7 days',
+          features: ['Unlimited vehicles', 'All features unlocked', 'Technical support', 'No credit card required'],
+          button: 'Get Started'
+        },
+        starter: {
+          name: 'Starter',
+          desc: 'Ideal for up to 10 vehicles',
+          period: '/month',
+          features: ['Up to 10 vehicles', 'All features', 'Email support', 'Monthly reports'],
+          button: 'Choose Plan'
+        },
+        pro: {
+          name: 'Professional',
+          desc: 'For growing fleets',
+          period: '/vehicle/month',
+          range: '10-50 vehicles',
+          features: ['Up to 50 vehicles', 'Priority support', 'Advanced reports', 'API access'],
+          button: 'Choose Plan'
+        },
+        enterprise: {
+          text: 'Custom pricing for 50+ vehicles:',
+          perVehicle: 'vehicle',
+          contact: '- Contact us.'
+        }
       },
       footer: {
         privacy: 'Privacy Policy',
@@ -921,7 +975,7 @@ const App: React.FC = () => {
   }
 
   if (!isAuthenticated) {
-      return <LandingPage t={t.landing} />;
+      return <LandingPage t={t.landing} language={language} setLanguage={setLanguage} />;
   }
 
   const renderContent = () => {

@@ -224,7 +224,6 @@ export interface TranslationDictionary {
       portalLogin: string;
     };
     hero: {
-      badge: string;
       title: string;
       titleHighlight: string;
       subtitle: string;
@@ -250,10 +249,38 @@ export interface TranslationDictionary {
       digitalApproval: { title: string; desc: string };
       advancedReporting: { title: string; desc: string };
     };
-    cta: {
+    pricing: {
       title: string;
       subtitle: string;
-      button: string;
+      popular: string;
+      trial: {
+        name: string;
+        desc: string;
+        price: string;
+        period: string;
+        features: string[];
+        button: string;
+      };
+      starter: {
+        name: string;
+        desc: string;
+        period: string;
+        features: string[];
+        button: string;
+      };
+      pro: {
+        name: string;
+        desc: string;
+        period: string;
+        range: string;
+        features: string[];
+        button: string;
+      };
+      enterprise: {
+        text: string;
+        perVehicle: string;
+        contact: string;
+      };
     };
     footer: {
       privacy: string;

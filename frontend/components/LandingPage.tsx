@@ -1,18 +1,20 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronRight, CheckCircle, TrendingUp, Shield, Smartphone, ArrowRight, Activity, Zap, BarChart3, Globe, X, Loader2, AlertCircle, Mail, Building2, User, Eye, EyeOff } from 'lucide-react';
+import { ChevronRight, CheckCircle, TrendingUp, Shield, Smartphone, ArrowRight, Zap, BarChart3, Globe, X, Loader2, AlertCircle, Mail, Building2, User, Eye, EyeOff, Clock, Truck, Crown } from 'lucide-react';
 import { useAuth } from '../src/contexts/AuthContext';
 import { TranslationDictionary } from '../types';
 
 interface LandingPageProps {
   onLogin?: () => void;
   t: TranslationDictionary['landing'];
+  language: 'tr' | 'en';
+  setLanguage: (lang: 'tr' | 'en') => void;
 }
 
 type AuthMode = 'login' | 'register' | 'forgot-password';
 
-export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, t }) => {
+export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, t, language, setLanguage }) => {
   const { login, register, isLoading } = useAuth();
   const [machineCount, setMachineCount] = useState(15);
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -135,10 +137,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, t }) => {
     setSuccessMessage('');
   };
   
-  // ROI Calculator Logic
-  const monthlyCostPaper = machineCount * 450; // Paper forms, lost time, manual entry cost approx
-  const monthlyCostSmart = machineCount * 450; // Base savings calc (just visualization)
-  const savings = (monthlyCostPaper * 0.4).toLocaleString('tr-TR'); // 40% efficiency
+  // ROI Calculator Logic - 2500 TL per vehicle savings
+  const savingsPerVehicle = 2500;
+  const savings = (machineCount * savingsPerVehicle).toLocaleString('tr-TR');
 
   return (
     <div className="min-h-screen bg-slate-900 text-white font-sans selection:bg-smart-yellow selection:text-smart-navy overflow-x-hidden">
@@ -153,12 +154,38 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, t }) => {
             <a href="#roi" className="hover:text-white transition-colors">{t.nav.calculator}</a>
             <a href="#pricing" className="hover:text-white transition-colors">{t.nav.pricing}</a>
           </div>
-          <button
-            onClick={openLoginModal}
-            className="bg-white/10 hover:bg-white/20 border border-white/20 text-white px-6 py-2 rounded-full font-bold transition-all flex items-center gap-2"
-          >
-            {t.nav.portalLogin} <ArrowRight size={16} />
-          </button>
+          <div className="flex items-center gap-3">
+            {/* Language Switcher */}
+            <div className="flex items-center bg-white/5 rounded-full p-1 border border-white/10">
+              <button
+                onClick={() => setLanguage('tr')}
+                className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                  language === 'tr'
+                    ? 'bg-smart-yellow text-smart-navy'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                TR
+              </button>
+              <button
+                onClick={() => setLanguage('en')}
+                className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                  language === 'en'
+                    ? 'bg-smart-yellow text-smart-navy'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                EN
+              </button>
+            </div>
+
+            <button
+              onClick={openLoginModal}
+              className="bg-white/10 hover:bg-white/20 border border-white/20 text-white px-6 py-2 rounded-full font-bold transition-all flex items-center gap-2"
+            >
+              {t.nav.portalLogin} <ArrowRight size={16} />
+            </button>
+          </div>
         </div>
       </nav>
 
@@ -169,14 +196,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, t }) => {
         <div className="absolute bottom-0 right-0 w-[800px] h-[600px] bg-smart-yellow/10 rounded-full blur-[100px] -z-10"></div>
 
         <div className="max-w-7xl mx-auto text-center">
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
           >
-            <span className="inline-block px-4 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-sm font-bold mb-6">
-              {t.hero.badge}
-            </span>
             <h1 className="text-5xl md:text-7xl font-black tracking-tight mb-8 leading-tight">
               {t.hero.title} <br />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-smart-yellow to-orange-500">{t.hero.titleHighlight}</span>
@@ -311,23 +335,120 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, t }) => {
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="py-24 px-6">
-        <div className="max-w-5xl mx-auto bg-gradient-to-r from-smart-navy to-blue-900 rounded-3xl p-12 text-center relative overflow-hidden border border-white/10">
-           <div className="absolute top-0 right-0 p-12 opacity-10">
-              <Activity size={200} />
-           </div>
+      {/* Pricing Section */}
+      <section id="pricing" className="py-24 px-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-5xl font-bold mb-6">{t.pricing.title}</h2>
+            <p className="text-gray-400 max-w-2xl mx-auto">
+              {t.pricing.subtitle}
+            </p>
+          </div>
 
-           <h2 className="text-3xl md:text-5xl font-bold mb-6 relative z-10">{t.cta.title}</h2>
-           <p className="text-blue-100 text-lg mb-10 max-w-2xl mx-auto relative z-10">
-             {t.cta.subtitle}
-           </p>
-           <button
-             onClick={openLoginModal}
-             className="bg-smart-yellow text-smart-navy px-10 py-4 rounded-xl font-bold text-xl hover:bg-yellow-400 hover:scale-105 transition-all shadow-xl relative z-10"
-           >
-             {t.cta.button}
-           </button>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {/* Free Trial */}
+            <motion.div
+              whileHover={{ scale: 1.02 }}
+              className="bg-slate-800 p-8 rounded-2xl border border-white/10 relative"
+            >
+              <div className="w-12 h-12 bg-green-500/20 rounded-lg flex items-center justify-center text-green-400 mb-6">
+                <Clock size={24} />
+              </div>
+              <h3 className="text-2xl font-bold mb-2">{t.pricing.trial.name}</h3>
+              <p className="text-gray-400 mb-6">{t.pricing.trial.desc}</p>
+              <div className="mb-6">
+                <span className="text-4xl font-black text-white">{t.pricing.trial.price}</span>
+                <span className="text-gray-400 ml-2">{t.pricing.trial.period}</span>
+              </div>
+              <ul className="space-y-3 mb-8">
+                {t.pricing.trial.features.map((feature, idx) => (
+                  <li key={idx} className="flex items-center gap-2 text-gray-300">
+                    <CheckCircle size={18} className="text-green-400" />
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+              <button
+                onClick={openLoginModal}
+                className="w-full bg-green-500 text-white py-3 rounded-xl font-bold hover:bg-green-400 transition-all"
+              >
+                {t.pricing.trial.button}
+              </button>
+            </motion.div>
+
+            {/* Starter Plan */}
+            <motion.div
+              whileHover={{ scale: 1.02 }}
+              className="bg-gradient-to-b from-smart-yellow/10 to-slate-800 p-8 rounded-2xl border-2 border-smart-yellow relative"
+            >
+              <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-smart-yellow text-smart-navy px-4 py-1 rounded-full text-sm font-bold">
+                {t.pricing.popular}
+              </div>
+              <div className="w-12 h-12 bg-smart-yellow/20 rounded-lg flex items-center justify-center text-smart-yellow mb-6">
+                <Truck size={24} />
+              </div>
+              <h3 className="text-2xl font-bold mb-2">{t.pricing.starter.name}</h3>
+              <p className="text-gray-400 mb-6">{t.pricing.starter.desc}</p>
+              <div className="mb-6">
+                <span className="text-4xl font-black text-white">₺99</span>
+                <span className="text-gray-400 ml-2">{t.pricing.starter.period}</span>
+              </div>
+              <ul className="space-y-3 mb-8">
+                {t.pricing.starter.features.map((feature, idx) => (
+                  <li key={idx} className="flex items-center gap-2 text-gray-300">
+                    <CheckCircle size={18} className="text-smart-yellow" />
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+              <button
+                onClick={openLoginModal}
+                className="w-full bg-smart-yellow text-smart-navy py-3 rounded-xl font-bold hover:bg-yellow-400 transition-all"
+              >
+                {t.pricing.starter.button}
+              </button>
+            </motion.div>
+
+            {/* Pro Plan */}
+            <motion.div
+              whileHover={{ scale: 1.02 }}
+              className="bg-slate-800 p-8 rounded-2xl border border-white/10 relative"
+            >
+              <div className="w-12 h-12 bg-purple-500/20 rounded-lg flex items-center justify-center text-purple-400 mb-6">
+                <Crown size={24} />
+              </div>
+              <h3 className="text-2xl font-bold mb-2">{t.pricing.pro.name}</h3>
+              <p className="text-gray-400 mb-6">{t.pricing.pro.desc}</p>
+              <div className="mb-2">
+                <span className="text-4xl font-black text-white">₺74</span>
+                <span className="text-gray-400 ml-2">{t.pricing.pro.period}</span>
+              </div>
+              <p className="text-sm text-gray-500 mb-6">{t.pricing.pro.range}</p>
+              <ul className="space-y-3 mb-8">
+                {t.pricing.pro.features.map((feature, idx) => (
+                  <li key={idx} className="flex items-center gap-2 text-gray-300">
+                    <CheckCircle size={18} className="text-purple-400" />
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+              <button
+                onClick={openLoginModal}
+                className="w-full bg-purple-500 text-white py-3 rounded-xl font-bold hover:bg-purple-400 transition-all"
+              >
+                {t.pricing.pro.button}
+              </button>
+            </motion.div>
+          </div>
+
+          {/* Enterprise Note */}
+          <div className="mt-12 text-center">
+            <p className="text-gray-400">
+              {t.pricing.enterprise.text}{' '}
+              <span className="text-smart-yellow font-bold">₺49/{t.pricing.enterprise.perVehicle}</span>
+              {' '}{t.pricing.enterprise.contact}
+            </p>
+          </div>
         </div>
       </section>
 
