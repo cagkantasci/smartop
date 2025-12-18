@@ -1,6 +1,19 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
+// Ensure API URL always ends with /api/v1
+const getApiBaseUrl = () => {
+  const envUrl = import.meta.env.VITE_API_URL;
+  if (!envUrl) {
+    return 'http://localhost:3000/api/v1';
+  }
+  // If URL doesn't end with /api/v1, append it
+  if (!envUrl.endsWith('/api/v1')) {
+    return envUrl.replace(/\/$/, '') + '/api/v1';
+  }
+  return envUrl;
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
