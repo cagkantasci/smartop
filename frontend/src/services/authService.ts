@@ -13,6 +13,21 @@ export interface RegisterData {
   lastName: string;
 }
 
+// Generate URL-friendly slug from organization name
+const generateSlug = (name: string): string => {
+  return name
+    .toLowerCase()
+    .replace(/ğ/g, 'g')
+    .replace(/ü/g, 'u')
+    .replace(/ş/g, 's')
+    .replace(/ı/g, 'i')
+    .replace(/ö/g, 'o')
+    .replace(/ç/g, 'c')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .substring(0, 50);
+};
+
 export interface AuthResponse {
   user: {
     id: string;
@@ -67,7 +82,12 @@ export const authService = {
   },
 
   async register(data: RegisterData): Promise<AuthResponse> {
-    const response = await api.post<AuthResponse>('/auth/register', data);
+    // Add organizationSlug derived from organizationName
+    const payload = {
+      ...data,
+      organizationSlug: generateSlug(data.organizationName),
+    };
+    const response = await api.post<AuthResponse>('/auth/register', payload);
     const { accessToken, refreshToken } = response.data;
 
     setAccessToken(accessToken);
