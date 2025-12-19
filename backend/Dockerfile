@@ -7,7 +7,7 @@ WORKDIR /app
 COPY package*.json ./
 COPY prisma ./prisma/
 
-RUN npm ci
+RUN npm ci --no-audit --no-fund
 
 # Generate Prisma client
 RUN npx prisma generate
