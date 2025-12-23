@@ -18,7 +18,9 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:migrate:prod": "prisma migrate deploy",
     "prisma:studio": "prisma studio",
-    "prisma:seed": "tsx prisma/seed.ts"
+    "prisma:seed": "tsx prisma/seed.ts",
+    "prisma:reset": "tsx prisma/reset-db.ts",
+    "db:reset-and-seed": "tsx prisma/reset-db.ts && tsx prisma/seed.ts"
   },
   "keywords": [
     "nestjs",
