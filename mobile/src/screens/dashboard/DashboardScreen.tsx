@@ -8,11 +8,13 @@ import {
   TouchableOpacity,
   Dimensions,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import * as Location from 'expo-location';
 // Conditional import for react-native-maps (not supported on web)
 let MapView: any = null;
 let Marker: any = null;
@@ -207,6 +209,9 @@ export function DashboardScreen() {
   const [recentMachines, setRecentMachines] = useState<Machine[]>([]);
   const [activeJobs, setActiveJobs] = useState<Job[]>([]);
   const [showMap, setShowMap] = useState(true);
+  const [mapRegion, setMapRegion] = useState(DEFAULT_REGION);
+  const [mapLoading, setMapLoading] = useState(true);
+  const [userLocation, setUserLocation] = useState<{latitude: number; longitude: number} | null>(null);
 
   // Get machines with location for map
   const machinesWithLocation = recentMachines.filter(
@@ -217,6 +222,38 @@ export function DashboardScreen() {
   );
 
   const isOperator = user?.role === 'operator';
+
+  // Get current user location
+  const getCurrentLocation = async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status === 'granted') {
+        const location = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
+        const newRegion = {
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+          latitudeDelta: 0.05,
+          longitudeDelta: 0.05,
+        };
+        setUserLocation({
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+        });
+        setMapRegion(newRegion);
+
+        // Animate map to user location if mapRef exists
+        if (mapRef.current && Platform.OS !== 'web') {
+          mapRef.current.animateToRegion(newRegion, 1000);
+        }
+      }
+    } catch (error) {
+      console.error('Error getting location:', error);
+    } finally {
+      setMapLoading(false);
+    }
+  };
 
   const fetchData = async () => {
     try {
@@ -277,6 +314,7 @@ export function DashboardScreen() {
 
   useEffect(() => {
     fetchData();
+    getCurrentLocation();
   }, []);
 
   const onRefresh = async () => {
@@ -404,6 +442,14 @@ export function DashboardScreen() {
           {showMap && (
             <Card style={[styles.mapCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
               <View style={styles.mapContainer}>
+                {mapLoading && Platform.OS !== 'web' && (
+                  <View style={[styles.mapLoadingOverlay, { backgroundColor: colors.card }]}>
+                    <ActivityIndicator size="large" color={colors.primary} />
+                    <Text style={[styles.mapLoadingText, { color: colors.textSecondary }]}>
+                      Konum alınıyor...
+                    </Text>
+                  </View>
+                )}
                 {Platform.OS === 'web' ? (
                   <WebMapView
                     machines={machinesWithLocation}
@@ -416,9 +462,11 @@ export function DashboardScreen() {
                     ref={mapRef}
                     style={styles.map}
                     provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
-                    initialRegion={DEFAULT_REGION}
+                    initialRegion={mapRegion}
+                    region={mapRegion}
                     showsUserLocation
-                    showsMyLocationButton={false}
+                    showsMyLocationButton
+                    onMapReady={() => setMapLoading(false)}
                   >
                     {/* Machine Markers */}
                     {machinesWithLocation.map((machine) => (
@@ -667,6 +715,21 @@ const styles = StyleSheet.create({
   mapEmptyText: {
     fontSize: 14,
     marginTop: 8,
+  },
+  mapLoadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+    borderRadius: 12,
+  },
+  mapLoadingText: {
+    fontSize: 14,
+    marginTop: 12,
   },
   calloutContainer: {
     padding: 8,

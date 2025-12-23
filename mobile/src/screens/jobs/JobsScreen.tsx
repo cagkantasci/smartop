@@ -11,6 +11,7 @@ import {
   Alert,
   Dimensions,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -200,6 +201,7 @@ export function JobsScreen() {
   const [currentRegion, setCurrentRegion] = useState<Region>(DEFAULT_REGION);
   const [machines, setMachines] = useState<Machine[]>([]);
   const [selectedMachineIds, setSelectedMachineIds] = useState<string[]>([]);
+  const [mapPickerLoading, setMapPickerLoading] = useState(false);
   const [newJob, setNewJob] = useState({
     title: '',
     description: '',
@@ -321,19 +323,32 @@ export function JobsScreen() {
   }, [jobs, statusFilter, showMyJobsOnly, user?.id]);
 
   const getCurrentLocation = async () => {
+    setMapPickerLoading(true);
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status === 'granted') {
-        const location = await Location.getCurrentPositionAsync({});
-        setCurrentRegion({
+        const location = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
+        const newRegion = {
           latitude: location.coords.latitude,
           longitude: location.coords.longitude,
-          latitudeDelta: 0.0922,
-          longitudeDelta: 0.0421,
-        });
+          latitudeDelta: 0.02,
+          longitudeDelta: 0.02,
+        };
+        setCurrentRegion(newRegion);
+
+        // Animate map to user location
+        if (mapRef.current && Platform.OS !== 'web') {
+          setTimeout(() => {
+            mapRef.current?.animateToRegion(newRegion, 1000);
+          }, 500);
+        }
       }
     } catch (error) {
       console.error('Error getting location:', error);
+    } finally {
+      setMapPickerLoading(false);
     }
   };
 
@@ -853,6 +868,12 @@ export function JobsScreen() {
           </View>
 
           <View style={styles.mapContainer}>
+            {mapPickerLoading && Platform.OS !== 'web' && (
+              <View style={styles.mapLoadingOverlay}>
+                <ActivityIndicator size="large" color="#3B82F6" />
+                <Text style={styles.mapLoadingText}>Konum alınıyor...</Text>
+              </View>
+            )}
             {Platform.OS === 'web' ? (
               <WebMapPicker
                 selectedLocation={selectedLocation}
@@ -868,6 +889,7 @@ export function JobsScreen() {
                 onPress={handleMapPress}
                 showsUserLocation
                 showsMyLocationButton
+                onMapReady={() => setMapPickerLoading(false)}
               >
                 {selectedLocation && (
                   <Marker
@@ -887,6 +909,29 @@ export function JobsScreen() {
                 </Text>
               </View>
             </View>
+
+            {/* Current Location Button */}
+            <TouchableOpacity
+              style={styles.myLocationButton}
+              onPress={getCurrentLocation}
+              disabled={mapPickerLoading}
+            >
+              <Ionicons
+                name="locate"
+                size={24}
+                color={mapPickerLoading ? '#9CA3AF' : '#3B82F6'}
+              />
+            </TouchableOpacity>
+
+            {/* Selected Location Info */}
+            {selectedLocation && (
+              <View style={styles.selectedLocationInfo}>
+                <Ionicons name="location" size={18} color="#22C55E" />
+                <Text style={styles.selectedLocationText}>
+                  {selectedLocation.latitude.toFixed(5)}, {selectedLocation.longitude.toFixed(5)}
+                </Text>
+              </View>
+            )}
           </View>
         </View>
       </Modal>
@@ -1390,6 +1435,56 @@ const styles = StyleSheet.create({
     fontSize: 13,
         marginLeft: 10,
     flex: 1,
+  },
+  mapLoadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(17, 24, 39, 0.9)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 20,
+  },
+  mapLoadingText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    marginTop: 12,
+  },
+  myLocationButton: {
+    position: 'absolute',
+    bottom: 80,
+    right: 16,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  selectedLocationInfo: {
+    position: 'absolute',
+    bottom: 16,
+    left: 16,
+    right: 80,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(17, 24, 39, 0.9)',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  selectedLocationText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    marginLeft: 8,
+    fontWeight: '500',
   },
   // Detail Modal styles
   detailHeader: {
