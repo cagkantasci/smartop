@@ -265,6 +265,98 @@ export class UsersService {
     };
   }
 
+  // Update own profile
+  async updateProfile(userId: string, dto: UpdateUserDto, organizationId: string) {
+    const user = await this.prisma.user.findFirst({
+      where: { id: userId, organizationId },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Only allow updating profile fields
+    const allowedFields = ['firstName', 'lastName', 'phone', 'avatarUrl'];
+    const updateData: any = {};
+    for (const field of allowedFields) {
+      if ((dto as any)[field] !== undefined) {
+        updateData[field] = (dto as any)[field];
+      }
+    }
+
+    const updatedUser = await this.prisma.user.update({
+      where: { id: userId },
+      data: updateData,
+    });
+
+    return this.sanitizeUser(updatedUser);
+  }
+
+  // Change password
+  async changePassword(userId: string, currentPassword: string, newPassword: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const isPasswordValid = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!isPasswordValid) {
+      throw new ForbiddenException('Current password is incorrect');
+    }
+
+    const newPasswordHash = await bcrypt.hash(newPassword, 12);
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash: newPasswordHash },
+    });
+
+    return { message: 'Password changed successfully' };
+  }
+
+  // Update notification settings
+  async updateNotificationSettings(userId: string, settings: any) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const allowedSettings = [
+      'pushEnabled',
+      'emailEnabled',
+      'smsEnabled',
+      'checklistReminderEnabled',
+      'jobUpdatesEnabled',
+      'maintenanceAlertsEnabled',
+    ];
+
+    const updateData: any = {};
+    for (const setting of allowedSettings) {
+      if (settings[setting] !== undefined) {
+        updateData[setting] = settings[setting];
+      }
+    }
+
+    const updatedUser = await this.prisma.user.update({
+      where: { id: userId },
+      data: updateData,
+    });
+
+    return {
+      pushEnabled: updatedUser.pushEnabled,
+      emailEnabled: updatedUser.emailEnabled,
+      smsEnabled: updatedUser.smsEnabled,
+      checklistReminderEnabled: updatedUser.checklistReminderEnabled,
+      jobUpdatesEnabled: updatedUser.jobUpdatesEnabled,
+      maintenanceAlertsEnabled: updatedUser.maintenanceAlertsEnabled,
+    };
+  }
+
   private sanitizeUser(user: any) {
     const { passwordHash, ...sanitized } = user;
     return sanitized;

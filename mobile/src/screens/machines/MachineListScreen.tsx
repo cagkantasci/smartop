@@ -10,13 +10,15 @@ import {
   Modal,
   ScrollView,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Card, StatusBadge, Button, Input } from '../../components/ui';
-import { machinesApi } from '../../services/api';
+import { machinesApi, machineReferenceApi } from '../../services/api';
 import { Machine, MachineStatus } from '../../types';
 import { MachinesStackParamList } from '../../navigation/types';
 import { useTheme } from '../../context/ThemeContext';
@@ -52,7 +54,38 @@ export function MachineListScreen() {
     model: '',
     plateNumber: '',
     year: '',
+    machineType: 'other' as string,
   });
+  const [brandSuggestions, setBrandSuggestions] = useState<any[]>([]);
+  const [modelSuggestions, setModelSuggestions] = useState<any[]>([]);
+  const [showBrandSuggestions, setShowBrandSuggestions] = useState(false);
+  const [showModelSuggestions, setShowModelSuggestions] = useState(false);
+  const [selectedBrandId, setSelectedBrandId] = useState<string | null>(null);
+
+  const MACHINE_TYPES = [
+    { label: 'Ekskavatör', value: 'excavator' },
+    { label: 'Dozer', value: 'dozer' },
+    { label: 'Vinç', value: 'crane' },
+    { label: 'Yükleyici', value: 'loader' },
+    { label: 'Kamyon', value: 'truck' },
+    { label: 'Greyder', value: 'grader' },
+    { label: 'Silindir', value: 'roller' },
+    { label: 'Forklift', value: 'forklift' },
+    { label: 'Kazıcı Yükleyici', value: 'backhoe' },
+    { label: 'Mini Yükleyici', value: 'skid_steer' },
+    { label: 'Teleskopik', value: 'telehandler' },
+    { label: 'Kompaktör', value: 'compactor' },
+    { label: 'Finişer', value: 'paver' },
+    { label: 'Hendek Makinesi', value: 'trencher' },
+    { label: 'Sondaj', value: 'drill' },
+    { label: 'Jeneratör', value: 'generator' },
+    { label: 'Kompresör', value: 'compressor' },
+    { label: 'Beton Ekipmanı', value: 'concrete_equipment' },
+    { label: 'Platform', value: 'lift' },
+    { label: 'Treyler', value: 'trailer' },
+    { label: 'Skreyper', value: 'scraper' },
+    { label: 'Diğer', value: 'other' },
+  ];
 
   const fetchMachines = async () => {
     try {
@@ -104,6 +137,57 @@ export function MachineListScreen() {
     setRefreshing(false);
   }, []);
 
+  // Search brands as user types
+  const handleBrandSearch = async (text: string) => {
+    setNewMachine((prev) => ({ ...prev, brand: text }));
+    if (text.length >= 2) {
+      try {
+        const results = await machineReferenceApi.searchBrands(text, 10);
+        setBrandSuggestions(results || []);
+        setShowBrandSuggestions(true);
+      } catch (error) {
+        console.error('Brand search error:', error);
+        setBrandSuggestions([]);
+      }
+    } else {
+      setBrandSuggestions([]);
+      setShowBrandSuggestions(false);
+    }
+  };
+
+  // Search models as user types
+  const handleModelSearch = async (text: string) => {
+    setNewMachine((prev) => ({ ...prev, model: text }));
+    if (text.length >= 2) {
+      try {
+        const results = await machineReferenceApi.searchModels(text, selectedBrandId || undefined, undefined, 10);
+        setModelSuggestions(results || []);
+        setShowModelSuggestions(true);
+      } catch (error) {
+        console.error('Model search error:', error);
+        setModelSuggestions([]);
+      }
+    } else {
+      setModelSuggestions([]);
+      setShowModelSuggestions(false);
+    }
+  };
+
+  // Select a brand from suggestions
+  const selectBrand = (brand: any) => {
+    setNewMachine((prev) => ({ ...prev, brand: brand.name }));
+    setSelectedBrandId(brand.id);
+    setShowBrandSuggestions(false);
+    setBrandSuggestions([]);
+  };
+
+  // Select a model from suggestions
+  const selectModel = (model: any) => {
+    setNewMachine((prev) => ({ ...prev, model: model.name }));
+    setShowModelSuggestions(false);
+    setModelSuggestions([]);
+  };
+
   const handleAddMachine = async () => {
     if (!newMachine.name || !newMachine.brand || !newMachine.plateNumber) {
       Alert.alert(t.common.error, t.machines.messages.requiredFields);
@@ -112,12 +196,22 @@ export function MachineListScreen() {
 
     setIsSubmitting(true);
     try {
+      await machinesApi.create({
+        name: newMachine.name,
+        brand: newMachine.brand,
+        model: newMachine.model || undefined,
+        year: newMachine.year ? parseInt(newMachine.year, 10) : undefined,
+        machineType: newMachine.machineType,
+        licensePlate: newMachine.plateNumber,
+      });
       Alert.alert(t.common.success, t.machines.messages.addSuccess);
       setShowAddModal(false);
-      setNewMachine({ name: '', brand: '', model: '', plateNumber: '', year: '' });
+      setNewMachine({ name: '', brand: '', model: '', plateNumber: '', year: '', machineType: 'other' });
+      setSelectedBrandId(null);
       fetchMachines();
-    } catch (error) {
-      Alert.alert(t.common.error, t.machines.messages.addError);
+    } catch (error: any) {
+      console.error('Add machine error:', error);
+      Alert.alert(t.common.error, error?.response?.data?.message || t.machines.messages.addError);
     } finally {
       setIsSubmitting(false);
     }
@@ -269,61 +363,149 @@ export function MachineListScreen() {
         presentationStyle="pageSheet"
         onRequestClose={() => setShowAddModal(false)}
       >
-        <View style={[styles.modalContainer, { backgroundColor: colors.background }]}>
-          <View style={[styles.modalHeader, { backgroundColor: colors.card, borderBottomColor: colors.cardBorder }]}>
-            <TouchableOpacity
-              onPress={() => setShowAddModal(false)}
-              style={styles.closeButton}
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+        >
+          <View style={[styles.modalContainer, { backgroundColor: colors.background }]}>
+            <View style={[styles.modalHeader, { backgroundColor: colors.card, borderBottomColor: colors.cardBorder }]}>
+              <TouchableOpacity
+                onPress={() => setShowAddModal(false)}
+                style={styles.closeButton}
+              >
+                <Ionicons name="close" size={24} color={colors.text} />
+              </TouchableOpacity>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>{t.machines.addNew}</Text>
+              <View style={{ width: 40 }} />
+            </View>
+
+            <ScrollView
+              style={styles.modalContent}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
             >
-              <Ionicons name="close" size={24} color={colors.text} />
-            </TouchableOpacity>
-            <Text style={[styles.modalTitle, { color: colors.text }]}>{t.machines.addNew}</Text>
-            <View style={{ width: 40 }} />
-          </View>
+              <Input
+                label={`${t.machines.fields.name} *`}
+                placeholder="örn: Ekskavatör 1"
+                value={newMachine.name}
+                onChangeText={(text) => setNewMachine((prev) => ({ ...prev, name: text }))}
+              />
 
-          <ScrollView style={styles.modalContent}>
-            <Input
-              label={`${t.machines.fields.name} *`}
-              placeholder="örn: Ekskavatör 1"
-              value={newMachine.name}
-              onChangeText={(text) => setNewMachine((prev) => ({ ...prev, name: text }))}
-            />
-            <Input
-              label={`${t.machines.fields.brand} *`}
-              placeholder="örn: Caterpillar"
-              value={newMachine.brand}
-              onChangeText={(text) => setNewMachine((prev) => ({ ...prev, brand: text }))}
-            />
-            <Input
-              label={t.machines.fields.model}
-              placeholder="örn: 320D"
-              value={newMachine.model}
-              onChangeText={(text) => setNewMachine((prev) => ({ ...prev, model: text }))}
-            />
-            <Input
-              label={`${t.machines.fields.plateNumber} *`}
-              placeholder="örn: 34 ABC 123"
-              value={newMachine.plateNumber}
-              onChangeText={(text) => setNewMachine((prev) => ({ ...prev, plateNumber: text }))}
-            />
-            <Input
-              label={t.machines.fields.year}
-              placeholder="örn: 2020"
-              value={newMachine.year}
-              onChangeText={(text) => setNewMachine((prev) => ({ ...prev, year: text }))}
-              keyboardType="numeric"
-            />
-          </ScrollView>
+              {/* Brand with suggestions */}
+              <View style={styles.inputWithSuggestions}>
+                <Input
+                  label={`${t.machines.fields.brand} *`}
+                  placeholder="örn: Caterpillar"
+                  value={newMachine.brand}
+                  onChangeText={handleBrandSearch}
+                  onFocus={() => newMachine.brand.length >= 2 && setShowBrandSuggestions(true)}
+                />
+                {showBrandSuggestions && brandSuggestions.length > 0 && (
+                  <View style={[styles.suggestionsContainer, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+                    {brandSuggestions.map((brand) => (
+                      <TouchableOpacity
+                        key={brand.id}
+                        style={[styles.suggestionItem, { borderBottomColor: colors.cardBorder }]}
+                        onPress={() => selectBrand(brand)}
+                      >
+                        <Text style={[styles.suggestionText, { color: colors.text }]}>{brand.name}</Text>
+                        {brand.country && (
+                          <Text style={[styles.suggestionSubtext, { color: colors.textSecondary }]}>{brand.country}</Text>
+                        )}
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+              </View>
 
-          <View style={[styles.modalFooter, { backgroundColor: colors.card, borderTopColor: colors.cardBorder }]}>
-            <Button
-              title={t.machines.addNew}
-              onPress={handleAddMachine}
-              loading={isSubmitting}
-              fullWidth
-            />
+              {/* Model with suggestions */}
+              <View style={styles.inputWithSuggestions}>
+                <Input
+                  label={t.machines.fields.model}
+                  placeholder="örn: 320D"
+                  value={newMachine.model}
+                  onChangeText={handleModelSearch}
+                  onFocus={() => newMachine.model.length >= 2 && setShowModelSuggestions(true)}
+                />
+                {showModelSuggestions && modelSuggestions.length > 0 && (
+                  <View style={[styles.suggestionsContainer, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+                    {modelSuggestions.map((model) => (
+                      <TouchableOpacity
+                        key={model.id}
+                        style={[styles.suggestionItem, { borderBottomColor: colors.cardBorder }]}
+                        onPress={() => selectModel(model)}
+                      >
+                        <Text style={[styles.suggestionText, { color: colors.text }]}>{model.name}</Text>
+                        {model.brand?.name && (
+                          <Text style={[styles.suggestionSubtext, { color: colors.textSecondary }]}>{model.brand.name}</Text>
+                        )}
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+              </View>
+
+              {/* Machine Type Selector */}
+              <View style={styles.inputContainer}>
+                <Text style={[styles.inputLabel, { color: colors.text }]}>{t.machines.fields.type || 'Makine Tipi'} *</Text>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  style={styles.typeScrollView}
+                  contentContainerStyle={styles.typeScrollContent}
+                >
+                  {MACHINE_TYPES.map((type) => (
+                    <TouchableOpacity
+                      key={type.value}
+                      style={[
+                        styles.typeChip,
+                        {
+                          backgroundColor: newMachine.machineType === type.value ? colors.primary : colors.inputBg,
+                          borderColor: newMachine.machineType === type.value ? colors.primary : colors.inputBorder,
+                        }
+                      ]}
+                      onPress={() => setNewMachine((prev) => ({ ...prev, machineType: type.value }))}
+                    >
+                      <Text style={[
+                        styles.typeChipText,
+                        { color: newMachine.machineType === type.value ? '#FFFFFF' : colors.text }
+                      ]}>
+                        {type.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+
+              <Input
+                label={`${t.machines.fields.plateNumber} *`}
+                placeholder="örn: 34 ABC 123"
+                value={newMachine.plateNumber}
+                onChangeText={(text) => setNewMachine((prev) => ({ ...prev, plateNumber: text }))}
+              />
+              <Input
+                label={t.machines.fields.year}
+                placeholder="örn: 2020"
+                value={newMachine.year}
+                onChangeText={(text) => setNewMachine((prev) => ({ ...prev, year: text }))}
+                keyboardType="numeric"
+              />
+
+              {/* Extra padding for keyboard */}
+              <View style={{ height: 100 }} />
+            </ScrollView>
+
+            <View style={[styles.modalFooter, { backgroundColor: colors.card, borderTopColor: colors.cardBorder }]}>
+              <Button
+                title={t.machines.addNew}
+                onPress={handleAddMachine}
+                loading={isSubmitting}
+                fullWidth
+              />
+            </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );
@@ -486,5 +668,64 @@ const styles = StyleSheet.create({
   modalFooter: {
     padding: 16,
     borderTopWidth: 1,
+  },
+  inputWithSuggestions: {
+    position: 'relative',
+    zIndex: 1,
+    marginBottom: 8,
+  },
+  suggestionsContainer: {
+    position: 'absolute',
+    top: '100%',
+    left: 0,
+    right: 0,
+    maxHeight: 150,
+    borderWidth: 1,
+    borderRadius: 8,
+    marginTop: -8,
+    zIndex: 1000,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  suggestionItem: {
+    padding: 12,
+    borderBottomWidth: 1,
+  },
+  suggestionText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  suggestionSubtext: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  inputContainer: {
+    marginBottom: 16,
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginBottom: 8,
+  },
+  typeScrollView: {
+    marginTop: 4,
+  },
+  typeScrollContent: {
+    paddingRight: 16,
+    gap: 8,
+  },
+  typeChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    marginRight: 8,
+  },
+  typeChipText: {
+    fontSize: 13,
+    fontWeight: '500',
   },
 });

@@ -29,8 +29,8 @@ if (Platform.OS !== 'web') {
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useLanguage } from '../../context/LanguageContext';
-import { Card, StatusBadge } from '../../components/ui';
-import { machinesApi, checklistsApi, jobsApi } from '../../services/api';
+import { Card } from '../../components/ui';
+import { machinesApi, jobsApi } from '../../services/api';
 import { DashboardStats, Machine, Job } from '../../types';
 import { MainTabParamList } from '../../navigation/types';
 
@@ -296,9 +296,24 @@ export function DashboardScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       {/* Header */}
       <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.cardBorder }]}>
-        <View>
-          <Text style={[styles.greeting, { color: colors.textSecondary }]}>{getGreeting()},</Text>
-          <Text style={[styles.userName, { color: colors.text }]}>{user?.firstName || t.dashboard.user}</Text>
+        <View style={styles.headerLeft}>
+          {/* User Avatar */}
+          <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
+            {user?.avatarUrl ? (
+              <View style={styles.avatarImage}>
+                {/* Image would go here if we had image support */}
+              </View>
+            ) : (
+              <Text style={styles.avatarText}>
+                {user?.firstName?.charAt(0)?.toUpperCase() || 'U'}
+                {user?.lastName?.charAt(0)?.toUpperCase() || ''}
+              </Text>
+            )}
+          </View>
+          <View style={styles.headerTextContainer}>
+            <Text style={[styles.greeting, { color: colors.textSecondary }]}>{getGreeting()},</Text>
+            <Text style={[styles.userName, { color: colors.text }]}>{user?.firstName || t.dashboard.user}</Text>
+          </View>
         </View>
         <TouchableOpacity onPress={logout} style={styles.logoutButton}>
           <Ionicons name="log-out-outline" size={24} color={colors.textSecondary} />
@@ -489,77 +504,6 @@ export function DashboardScreen() {
           )}
         </View>
 
-        {/* Makineler - Operatör için "Atanan Makinelerim" */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              {isOperator ? (t.dashboard.sections.myMachines || 'Atanan Makinelerim') : t.dashboard.sections.machines}
-            </Text>
-            {!isOperator && (
-              <TouchableOpacity onPress={() => navigation.navigate('Machines')}>
-                <Text style={[styles.seeAll, { color: colors.primary }]}>{t.dashboard.sections.seeAll}</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-
-          {recentMachines.length > 0 ? (
-            recentMachines.map((machine) => (
-              <Card key={machine.id} style={[styles.machineCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
-                <View style={styles.machineHeader}>
-                  <View>
-                    <Text style={[styles.machineName, { color: colors.text }]}>{machine.name}</Text>
-                    <Text style={[styles.machineInfo, { color: colors.textSecondary }]}>
-                      {machine.brand} • {machine.plateNumber}
-                    </Text>
-                  </View>
-                  <StatusBadge status={machine.status} size="sm" />
-                </View>
-              </Card>
-            ))
-          ) : (
-            <Card style={[styles.emptyCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
-              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-                {isOperator ? (t.dashboard.empty.noAssignedMachines || 'Size atanmış makine bulunmuyor') : t.dashboard.empty.machines}
-              </Text>
-            </Card>
-          )}
-        </View>
-
-        {/* İşler - Operatör için "Atanan İşlerim" */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              {isOperator ? (t.dashboard.sections.myJobs || 'Atanan İşlerim') : t.dashboard.sections.activeJobs}
-            </Text>
-            {!isOperator && (
-              <TouchableOpacity onPress={() => navigation.navigate('Jobs')}>
-                <Text style={[styles.seeAll, { color: colors.primary }]}>{t.dashboard.sections.seeAll}</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-
-          {activeJobs.length > 0 ? (
-            activeJobs.map((job) => (
-              <Card key={job.id} style={[styles.jobCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
-                <View style={styles.jobHeader}>
-                  <Text style={[styles.jobTitle, { color: colors.text }]}>{job.title}</Text>
-                  <StatusBadge status={job.status} size="sm" />
-                </View>
-                {job.description && (
-                  <Text style={[styles.jobDescription, { color: colors.textSecondary }]} numberOfLines={2}>
-                    {job.description}
-                  </Text>
-                )}
-              </Card>
-            ))
-          ) : (
-            <Card style={[styles.emptyCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
-              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-                {isOperator ? (t.dashboard.empty.noAssignedJobs || 'Size atanmış iş bulunmuyor') : t.dashboard.empty.jobs}
-              </Text>
-            </Card>
-          )}
-        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -576,6 +520,31 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  avatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 24,
+  },
+  avatarText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  headerTextContainer: {
+    flex: 1,
   },
   greeting: {
     fontSize: 14,

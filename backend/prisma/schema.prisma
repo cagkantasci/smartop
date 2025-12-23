@@ -201,7 +201,7 @@ model Machine {
   machineType          MachineType   @map("machine_type")
   serialNumber         String?       @map("serial_number")
   licensePlate         String?       @map("license_plate")
-  status               MachineStatus @default(idle)
+  status               MachineStatus @default(active)
   engineHours          Decimal       @default(0) @map("engine_hours") @db.Decimal(10, 2)
   odometer             Decimal       @default(0) @db.Decimal(12, 2)
   fuelType             String?       @map("fuel_type")

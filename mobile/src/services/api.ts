@@ -142,6 +142,25 @@ export const machinesApi = {
     return response.data;
   },
 
+  create: async (data: {
+    name: string;
+    brand?: string;
+    model?: string;
+    year?: number;
+    machineType: string;
+    serialNumber?: string;
+    licensePlate?: string;
+    fuelType?: string;
+    fuelCapacity?: number;
+    engineHours?: number;
+    odometer?: number;
+    imageUrl?: string;
+    notes?: string;
+  }) => {
+    const response = await api.post('/machines', data);
+    return response.data;
+  },
+
   update: async (id: string, data: {
     name?: string;
     status?: string;
@@ -164,6 +183,61 @@ export const machinesApi = {
 
   getChecklists: async (id: string) => {
     const response = await api.get(`/machines/${id}/checklists`);
+    return response.data;
+  },
+};
+
+// Machine Reference API (for brand/model lookup)
+export const machineReferenceApi = {
+  getCategories: async (parentId?: string) => {
+    const params = parentId ? { parentId } : { parentId: 'root' };
+    const response = await api.get('/machine-reference/categories', { params });
+    return response.data;
+  },
+
+  getBrands: async (popularOnly?: boolean) => {
+    const params = popularOnly ? { popularOnly: 'true' } : {};
+    const response = await api.get('/machine-reference/brands', { params });
+    return response.data;
+  },
+
+  searchBrands: async (query: string, limit?: number) => {
+    const response = await api.get('/machine-reference/brands/search', {
+      params: { q: query, limit: limit || 20 },
+    });
+    return response.data;
+  },
+
+  getModels: async (brandId?: string, categoryId?: string, search?: string) => {
+    const response = await api.get('/machine-reference/models', {
+      params: { brandId, categoryId, search },
+    });
+    return response.data;
+  },
+
+  searchModels: async (query: string, brandId?: string, categoryId?: string, limit?: number) => {
+    const response = await api.get('/machine-reference/models/search', {
+      params: { q: query, brandId, categoryId, limit: limit || 30 },
+    });
+    return response.data;
+  },
+
+  smartFill: async (name: string) => {
+    const response = await api.get('/machine-reference/smart-fill', {
+      params: { name },
+    });
+    return response.data;
+  },
+
+  suggestCategory: async (keyword: string) => {
+    const response = await api.get('/machine-reference/categories/suggest', {
+      params: { keyword },
+    });
+    return response.data;
+  },
+
+  getStats: async () => {
+    const response = await api.get('/machine-reference/stats');
     return response.data;
   },
 };

@@ -123,4 +123,37 @@ export class UsersController {
   ) {
     return this.usersService.toggleBiometric(userId, enabled);
   }
+
+  @Patch('profile')
+  @ApiOperation({ summary: 'Update current user profile' })
+  @ApiResponse({ status: 200, description: 'Profile updated successfully' })
+  async updateProfile(
+    @Body() dto: UpdateUserDto,
+    @CurrentUser('id') userId: string,
+    @CurrentUser('organizationId') organizationId: string,
+  ) {
+    return this.usersService.updateProfile(userId, dto, organizationId);
+  }
+
+  @Post('change-password')
+  @ApiOperation({ summary: 'Change current user password' })
+  @ApiResponse({ status: 200, description: 'Password changed successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid current password' })
+  async changePassword(
+    @Body('currentPassword') currentPassword: string,
+    @Body('newPassword') newPassword: string,
+    @CurrentUser('id') userId: string,
+  ) {
+    return this.usersService.changePassword(userId, currentPassword, newPassword);
+  }
+
+  @Patch('notification-settings')
+  @ApiOperation({ summary: 'Update notification settings' })
+  @ApiResponse({ status: 200, description: 'Notification settings updated' })
+  async updateNotificationSettings(
+    @Body() settings: any,
+    @CurrentUser('id') userId: string,
+  ) {
+    return this.usersService.updateNotificationSettings(userId, settings);
+  }
 }
