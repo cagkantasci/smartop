@@ -210,7 +210,7 @@ export function DashboardScreen() {
   const [activeJobs, setActiveJobs] = useState<Job[]>([]);
   const [showMap, setShowMap] = useState(true);
   const [mapRegion, setMapRegion] = useState(DEFAULT_REGION);
-  const [mapLoading, setMapLoading] = useState(true);
+  const [mapReady, setMapReady] = useState(false);
   const [userLocation, setUserLocation] = useState<{latitude: number; longitude: number} | null>(null);
 
   // Get machines with location for map
@@ -250,8 +250,6 @@ export function DashboardScreen() {
       }
     } catch (error) {
       console.error('Error getting location:', error);
-    } finally {
-      setMapLoading(false);
     }
   };
 
@@ -442,14 +440,6 @@ export function DashboardScreen() {
           {showMap && (
             <Card style={[styles.mapCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
               <View style={styles.mapContainer}>
-                {mapLoading && Platform.OS !== 'web' && (
-                  <View style={[styles.mapLoadingOverlay, { backgroundColor: colors.card }]}>
-                    <ActivityIndicator size="large" color={colors.primary} />
-                    <Text style={[styles.mapLoadingText, { color: colors.textSecondary }]}>
-                      Konum alınıyor...
-                    </Text>
-                  </View>
-                )}
                 {Platform.OS === 'web' ? (
                   <WebMapView
                     machines={machinesWithLocation}
@@ -463,10 +453,13 @@ export function DashboardScreen() {
                     style={styles.map}
                     provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
                     initialRegion={mapRegion}
-                    region={mapRegion}
                     showsUserLocation
                     showsMyLocationButton
-                    onMapReady={() => setMapLoading(false)}
+                    onMapReady={() => setMapReady(true)}
+                    mapType="standard"
+                    loadingEnabled={true}
+                    loadingIndicatorColor="#3B82F6"
+                    loadingBackgroundColor="#F3F4F6"
                   >
                     {/* Machine Markers */}
                     {machinesWithLocation.map((machine) => (

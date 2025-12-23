@@ -602,8 +602,6 @@ export function JobsScreen() {
           <Text style={[styles.headerTitle, { color: colors.text }]}>{t.jobs.title}</Text>
           <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>
             {interpolate(t.jobs.subtitle, { count: filteredJobs.length })}
-            {' | '}
-            {jobs.filter(j => j.jobAssignments && j.jobAssignments.length > 0).length} w/machines
           </Text>
         </View>
         <TouchableOpacity
@@ -638,11 +636,6 @@ export function JobsScreen() {
               {showMyJobsOnly ? 'Bana Atanan İşler' : 'Tüm İşler'}
             </Text>
           </TouchableOpacity>
-          <View style={{ marginLeft: 10 }}>
-            <Text style={{ color: user?.role === 'admin' ? '#EF4444' : '#22C55E', fontSize: 12, fontWeight: '600' }}>
-              {user?.firstName} ({user?.role})
-            </Text>
-          </View>
         </View>
       </View>
 
