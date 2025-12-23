@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,11 +7,14 @@ import {
   TouchableOpacity,
   Switch,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Card, Input, Button } from '../../components/ui';
 import { useAuth } from '../../context/AuthContext';
+import { usePushNotifications } from '../../services/pushNotifications';
+import api from '../../services/api';
 
 type SettingsTab = 'profile' | 'notifications' | 'app' | 'about';
 
@@ -25,6 +28,7 @@ interface NotificationSettings {
 
 export function SettingsScreen() {
   const { user } = useAuth();
+  const pushNotifications = usePushNotifications();
   const [activeTab, setActiveTab] = useState<SettingsTab>('profile');
   const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>({
     pushEnabled: true,
@@ -35,6 +39,67 @@ export function SettingsScreen() {
   });
   const [language, setLanguage] = useState('tr');
   const [theme, setTheme] = useState('dark');
+  const [pushStatus, setPushStatus] = useState<{
+    firebaseInitialized: boolean;
+    registeredDevices: number;
+    hasActiveDevices: boolean;
+  } | null>(null);
+  const [loadingPushStatus, setLoadingPushStatus] = useState(false);
+  const [sendingTest, setSendingTest] = useState(false);
+
+  // Fetch push notification status from server
+  const fetchPushStatus = async () => {
+    setLoadingPushStatus(true);
+    try {
+      const response = await api.get('/notifications/device/status');
+      setPushStatus(response.data);
+    } catch (error) {
+      console.error('Failed to fetch push status:', error);
+    } finally {
+      setLoadingPushStatus(false);
+    }
+  };
+
+  // Send test notification
+  const sendTestNotification = async () => {
+    setSendingTest(true);
+    try {
+      const response = await api.post('/notifications/test', {
+        title: 'Test Bildirimi',
+        body: 'Bu bir test bildirimidir. Bildirimler çalışıyor!'
+      });
+      if (response.data.success) {
+        Alert.alert('Başarılı', 'Test bildirimi gönderildi. Birkaç saniye içinde gelecek.');
+      } else {
+        Alert.alert('Uyarı', response.data.message || 'Bildirim gönderilemedi');
+      }
+    } catch (error: any) {
+      Alert.alert('Hata', error.response?.data?.message || 'Bildirim gönderilemedi');
+    } finally {
+      setSendingTest(false);
+    }
+  };
+
+  // Register device for push notifications
+  const registerDevice = async () => {
+    try {
+      const success = await pushNotifications.registerDevice();
+      if (success) {
+        Alert.alert('Başarılı', 'Cihaz bildirimler için kaydedildi');
+        fetchPushStatus();
+      } else {
+        Alert.alert('Hata', 'Cihaz kaydedilemedi. Push token alınamadı.');
+      }
+    } catch (error) {
+      Alert.alert('Hata', 'Cihaz kaydedilirken bir hata oluştu');
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'notifications') {
+      fetchPushStatus();
+    }
+  }, [activeTab]);
 
   const tabs: { key: SettingsTab; label: string; icon: string }[] = [
     { key: 'profile', label: 'Profil', icon: 'person-outline' },
@@ -123,6 +188,67 @@ export function SettingsScreen() {
 
   const renderNotificationsTab = () => (
     <ScrollView showsVerticalScrollIndicator={false}>
+      {/* Push Notification Status */}
+      <Card style={styles.card}>
+        <Text style={styles.cardTitle}>Bildirim Durumu</Text>
+
+        {loadingPushStatus ? (
+          <ActivityIndicator size="small" color="#F59E0B" style={{ marginVertical: 20 }} />
+        ) : (
+          <>
+            <View style={styles.statusRow}>
+              <Text style={styles.statusLabel}>Cihaz Token:</Text>
+              <View style={[styles.statusBadge, { backgroundColor: pushNotifications.hasToken ? '#22C55E20' : '#EF444420' }]}>
+                <Text style={[styles.statusText, { color: pushNotifications.hasToken ? '#22C55E' : '#EF4444' }]}>
+                  {pushNotifications.hasToken ? 'Mevcut' : 'Yok'}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.statusRow}>
+              <Text style={styles.statusLabel}>Sunucu Firebase:</Text>
+              <View style={[styles.statusBadge, { backgroundColor: pushStatus?.firebaseInitialized ? '#22C55E20' : '#EF444420' }]}>
+                <Text style={[styles.statusText, { color: pushStatus?.firebaseInitialized ? '#22C55E' : '#EF4444' }]}>
+                  {pushStatus?.firebaseInitialized ? 'Aktif' : 'Pasif'}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.statusRow}>
+              <Text style={styles.statusLabel}>Kayıtlı Cihazlar:</Text>
+              <Text style={styles.statusValue}>{pushStatus?.registeredDevices || 0}</Text>
+            </View>
+
+            <View style={styles.buttonRow}>
+              {!pushNotifications.hasToken || !pushStatus?.hasActiveDevices ? (
+                <TouchableOpacity
+                  style={[styles.actionButton, { backgroundColor: '#3B82F6' }]}
+                  onPress={registerDevice}
+                >
+                  <Ionicons name="add-circle-outline" size={18} color="#FFF" />
+                  <Text style={styles.actionButtonText}>Cihazı Kaydet</Text>
+                </TouchableOpacity>
+              ) : null}
+
+              <TouchableOpacity
+                style={[styles.actionButton, { backgroundColor: '#F59E0B' }]}
+                onPress={sendTestNotification}
+                disabled={sendingTest}
+              >
+                {sendingTest ? (
+                  <ActivityIndicator size="small" color="#FFF" />
+                ) : (
+                  <>
+                    <Ionicons name="notifications-outline" size={18} color="#FFF" />
+                    <Text style={styles.actionButtonText}>Test Gönder</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          </>
+        )}
+      </Card>
+
       <Card style={styles.card}>
         <Text style={styles.cardTitle}>Bildirim Kanallari</Text>
 
@@ -638,5 +764,51 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#6B7280',
     marginBottom: 2,
+  },
+  // Push notification status styles
+  statusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.cardBorder,
+  },
+  statusLabel: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+  },
+  statusValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  statusBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 16,
+  },
+  actionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 10,
+    gap: 6,
+  },
+  actionButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFF',
   },
 });

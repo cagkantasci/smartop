@@ -31,6 +31,7 @@ if (Platform.OS !== 'web') {
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useLanguage } from '../../context/LanguageContext';
+import { useNotifications } from '../../context/NotificationContext';
 import { Card } from '../../components/ui';
 import { machinesApi, jobsApi } from '../../services/api';
 import { DashboardStats, Machine, Job } from '../../types';
@@ -201,6 +202,7 @@ export function DashboardScreen() {
   const { user, logout } = useAuth();
   const { theme } = useTheme();
   const { t } = useLanguage();
+  const { counts: notificationCounts, refreshCounts } = useNotifications();
   const colors = theme.colors;
   const navigation = useNavigation<DashboardNavigationProp>();
   const mapRef = useRef<MapView>(null);
@@ -211,6 +213,7 @@ export function DashboardScreen() {
   const [showMap, setShowMap] = useState(true);
   const [mapRegion, setMapRegion] = useState(DEFAULT_REGION);
   const [mapReady, setMapReady] = useState(false);
+  const [mapError, setMapError] = useState<string | null>(null);
   const [userLocation, setUserLocation] = useState<{latitude: number; longitude: number} | null>(null);
 
   // Get machines with location for map
@@ -298,12 +301,12 @@ export function DashboardScreen() {
       }
       setActiveJobs(jobsArray.slice(0, 5));
 
-      // Calculate stats
+      // Calculate stats - use real data from NotificationContext
       setStats({
         activeMachines: machinesArray.filter((m: Machine) => m.status === 'active').length || 0,
-        pendingChecklists: 3, // Would come from API
+        pendingChecklists: notificationCounts.pendingChecklists,
         activeJobs: jobsArray.filter((j: Job) => j.status === 'in_progress').length || 0,
-        alerts: 2, // Would come from API
+        alerts: notificationCounts.pendingApprovals,
       });
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error);
@@ -313,11 +316,11 @@ export function DashboardScreen() {
   useEffect(() => {
     fetchData();
     getCurrentLocation();
-  }, []);
+  }, [notificationCounts]);
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await fetchData();
+    await Promise.all([fetchData(), refreshCounts()]);
     setRefreshing(false);
   };
 
@@ -447,7 +450,7 @@ export function DashboardScreen() {
                     getStatusColor={getStatusColor}
                     t={t}
                   />
-                ) : MapView ? (
+                ) : MapView && !mapError ? (
                   <MapView
                     ref={mapRef}
                     style={styles.map}
@@ -455,11 +458,19 @@ export function DashboardScreen() {
                     initialRegion={mapRegion}
                     showsUserLocation
                     showsMyLocationButton
-                    onMapReady={() => setMapReady(true)}
+                    onMapReady={() => {
+                      console.log('Map ready');
+                      setMapReady(true);
+                    }}
+                    onMapLoaded={() => console.log('Map loaded')}
                     mapType="standard"
                     loadingEnabled={true}
                     loadingIndicatorColor="#3B82F6"
                     loadingBackgroundColor="#F3F4F6"
+                    liteMode={false}
+                    cacheEnabled={true}
+                    zoomEnabled={true}
+                    scrollEnabled={true}
                   >
                     {/* Machine Markers */}
                     {machinesWithLocation.map((machine) => (
@@ -513,7 +524,14 @@ export function DashboardScreen() {
                       </Marker>
                     ))}
                   </MapView>
-                ) : null}
+                ) : (
+                  <View style={[styles.mapEmptyOverlay, { backgroundColor: colors.card }]}>
+                    <Ionicons name="map-outline" size={32} color={colors.textSecondary} />
+                    <Text style={[styles.mapEmptyText, { color: colors.textSecondary }]}>
+                      {mapError || 'Harita yüklenemedi'}
+                    </Text>
+                  </View>
+                )}
 
                 {/* Map Legend */}
                 <View style={[styles.mapLegend, { backgroundColor: colors.card }]}>
