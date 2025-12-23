@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <!-- Background -->
+  <rect width="1024" height="1024" rx="180" fill="#3B82F6"/>
+
+  <!-- Smartop Logo - Cross/Plus Symbol -->
+  <g transform="translate(512, 512)">
+    <!-- Horizontal pill shape -->
+    <rect x="-280" y="-80" width="560" height="160" rx="80" fill="none" stroke="white" stroke-width="40"/>
+
+    <!-- Vertical pill shape -->
+    <rect x="-80" y="-280" width="160" height="560" rx="80" fill="none" stroke="white" stroke-width="40"/>
+
+    <!-- Center circle -->
+    <circle cx="0" cy="0" r="50" fill="none" stroke="white" stroke-width="30"/>
+
+    <!-- Top connector dot -->
+    <circle cx="0" cy="-160" r="20" fill="white"/>
+
+    <!-- Bottom connector line -->
+    <line x1="0" y1="-120" x2="0" y2="120" stroke="white" stroke-width="20"/>
+  </g>
+</svg>
