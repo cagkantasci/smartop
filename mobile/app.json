@@ -26,8 +26,7 @@
         "backgroundColor": "#3B82F6"
       },
       "package": "com.smartop.mobile",
-      "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false,
+      "edgeToEdgeEnabled": false,
       "permissions": [
         "CAMERA",
         "ACCESS_FINE_LOCATION",

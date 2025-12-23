@@ -565,6 +565,7 @@ const styles = StyleSheet.create({
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
   },
   avatar: {
     width: 48,
@@ -596,6 +597,7 @@ const styles = StyleSheet.create({
   },
   logoutButton: {
     padding: 8,
+    marginLeft: 12,
   },
   scrollView: {
     flex: 1,
