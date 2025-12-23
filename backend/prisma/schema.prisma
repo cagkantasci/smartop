@@ -164,6 +164,13 @@ model User {
   // 2FA / Biometric settings
   twoFactorEnabled     Boolean   @default(false) @map("two_factor_enabled")
   biometricEnabled     Boolean   @default(false) @map("biometric_enabled")
+  // Notification settings
+  pushEnabled                Boolean   @default(true) @map("push_enabled")
+  emailEnabled               Boolean   @default(true) @map("email_enabled")
+  smsEnabled                 Boolean   @default(false) @map("sms_enabled")
+  checklistReminderEnabled   Boolean   @default(true) @map("checklist_reminder_enabled")
+  jobUpdatesEnabled          Boolean   @default(true) @map("job_updates_enabled")
+  maintenanceAlertsEnabled   Boolean   @default(true) @map("maintenance_alerts_enabled")
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")
 

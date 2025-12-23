@@ -302,6 +302,10 @@ export class UsersService {
       throw new NotFoundException('User not found');
     }
 
+    if (!user.passwordHash) {
+      throw new ForbiddenException('Password not set for this user');
+    }
+
     const isPasswordValid = await bcrypt.compare(currentPassword, user.passwordHash);
     if (!isPasswordValid) {
       throw new ForbiddenException('Current password is incorrect');
