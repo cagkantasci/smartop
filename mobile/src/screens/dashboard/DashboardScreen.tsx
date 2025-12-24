@@ -451,27 +451,28 @@ export function DashboardScreen() {
                     t={t}
                   />
                 ) : MapView && !mapError ? (
-                  <MapView
-                    ref={mapRef}
-                    style={styles.map}
-                    provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
-                    initialRegion={mapRegion}
-                    showsUserLocation
-                    showsMyLocationButton
-                    onMapReady={() => {
-                      console.log('Map ready');
-                      setMapReady(true);
-                    }}
-                    onMapLoaded={() => console.log('Map loaded')}
-                    mapType="standard"
-                    loadingEnabled={true}
-                    loadingIndicatorColor="#3B82F6"
-                    loadingBackgroundColor="#F3F4F6"
-                    liteMode={false}
-                    cacheEnabled={true}
-                    zoomEnabled={true}
-                    scrollEnabled={true}
-                  >
+                  <>
+                    {!mapReady && (
+                      <View style={[styles.mapLoadingOverlay, { backgroundColor: colors.card }]}>
+                        <ActivityIndicator size="large" color={colors.primary} />
+                        <Text style={[styles.mapLoadingText, { color: colors.textSecondary }]}>
+                          Harita yükleniyor...
+                        </Text>
+                      </View>
+                    )}
+                    <MapView
+                      ref={mapRef}
+                      style={styles.map}
+                      provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
+                      initialRegion={mapRegion}
+                      showsUserLocation
+                      showsMyLocationButton
+                      onMapReady={() => {
+                        console.log('Map ready');
+                        setTimeout(() => setMapReady(true), 500);
+                      }}
+                      mapType="standard"
+                    >
                     {/* Machine Markers */}
                     {machinesWithLocation.map((machine) => (
                       <Marker
@@ -524,6 +525,7 @@ export function DashboardScreen() {
                       </Marker>
                     ))}
                   </MapView>
+                  </>
                 ) : (
                   <View style={[styles.mapEmptyOverlay, { backgroundColor: colors.card }]}>
                     <Ionicons name="map-outline" size={32} color={colors.textSecondary} />
