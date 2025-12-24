@@ -612,19 +612,19 @@ export function JobsScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Filter Toggle - Show for all users */}
-      <View style={[styles.operatorFilterContainer, { backgroundColor: colors.card, borderBottomColor: colors.cardBorder }]}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+      {/* Combined Filter Section */}
+      <View style={[styles.filterContainer, { backgroundColor: colors.card, borderBottomColor: colors.cardBorder }]}>
+        <View style={styles.filterHeader}>
           <TouchableOpacity
             style={[
               styles.myJobsToggle,
-              { backgroundColor: showMyJobsOnly ? '#3B82F6' : colors.activeBackground },
+              { backgroundColor: showMyJobsOnly ? colors.primary : colors.activeBackground },
             ]}
             onPress={() => setShowMyJobsOnly(!showMyJobsOnly)}
           >
             <Ionicons
               name={showMyJobsOnly ? 'person' : 'people'}
-              size={18}
+              size={16}
               color={showMyJobsOnly ? '#FFFFFF' : colors.textSecondary}
             />
             <Text
@@ -633,14 +633,10 @@ export function JobsScreen() {
                 { color: showMyJobsOnly ? '#FFFFFF' : colors.textSecondary },
               ]}
             >
-              {showMyJobsOnly ? 'Bana Atanan İşler' : 'Tüm İşler'}
+              {showMyJobsOnly ? 'Benim' : 'Tümü'}
             </Text>
           </TouchableOpacity>
         </View>
-      </View>
-
-      {/* Status Filter */}
-      <View style={[styles.filterContainer, { backgroundColor: colors.card, borderBottomColor: colors.cardBorder }]}>
         <FlatList
           horizontal
           data={STATUS_FILTERS}
@@ -658,7 +654,7 @@ export function JobsScreen() {
               <Text
                 style={[
                   styles.filterChipText,
-                  { color: statusFilter === item.value ? colors.background : colors.textSecondary },
+                  { color: statusFilter === item.value ? '#FFFFFF' : colors.textSecondary },
                 ]}
               >
                 {item.label}
@@ -694,14 +690,14 @@ export function JobsScreen() {
         onRequestClose={() => setShowAddModal(false)}
       >
         <View style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
+          <View style={[styles.modalHeader, { backgroundColor: colors.card, borderBottomColor: colors.cardBorder }]}>
             <TouchableOpacity
               onPress={() => setShowAddModal(false)}
               style={styles.closeButton}
             >
-              <Ionicons name="close" size={24} color="#FFFFFF" />
+              <Ionicons name="close" size={24} color={colors.text} />
             </TouchableOpacity>
-            <Text style={styles.modalTitle}>Yeni İş Ekle</Text>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>Yeni İş Ekle</Text>
             <View style={{ width: 40 }} />
           </View>
 
@@ -727,9 +723,9 @@ export function JobsScreen() {
             />
 
             {/* Map Location Picker Button */}
-            <Text style={styles.inputLabel}>Harita Konumu</Text>
+            <Text style={[styles.inputLabel, { color: colors.text }]}>Harita Konumu</Text>
             <TouchableOpacity
-              style={styles.mapPickerButton}
+              style={[styles.mapPickerButton, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder }]}
               onPress={() => setShowMapPickerModal(true)}
             >
               {newJob.locationLat && newJob.locationLng ? (
@@ -741,14 +737,14 @@ export function JobsScreen() {
                 </View>
               ) : (
                 <View style={styles.locationNotSelected}>
-                  <Ionicons name="map-outline" size={24} color="#F59E0B" />
-                  <Text style={styles.locationNotSelectedText}>Haritadan Konum Seç</Text>
+                  <Ionicons name="map-outline" size={24} color={colors.primary} />
+                  <Text style={[styles.locationNotSelectedText, { color: colors.textSecondary }]}>Haritadan Konum Seç</Text>
                 </View>
               )}
-              <Ionicons name="chevron-forward" size={20} color="#6B7280" />
+              <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
             </TouchableOpacity>
 
-            <Text style={styles.priorityLabel}>Öncelik</Text>
+            <Text style={[styles.priorityLabel, { color: colors.text }]}>Öncelik</Text>
             <View style={styles.priorityContainer}>
               {(['low', 'medium', 'high', 'urgent'] as JobPriority[]).map((priority) => (
                 <TouchableOpacity
@@ -768,6 +764,7 @@ export function JobsScreen() {
                   <Text
                     style={[
                       styles.priorityText,
+                      { color: newJob.priority === priority ? '#FFFFFF' : colors.text },
                       newJob.priority === priority && styles.priorityTextActive,
                     ]}
                   >
@@ -778,10 +775,10 @@ export function JobsScreen() {
             </View>
 
             {/* Machine Selection */}
-            <Text style={styles.inputLabel}>Makine Seçimi</Text>
+            <Text style={[styles.inputLabel, { color: colors.text }]}>Makine Seçimi</Text>
             <View style={styles.machineSelectionContainer}>
               {machines.length === 0 ? (
-                <Text style={styles.noMachinesText}>Makine bulunamadı</Text>
+                <Text style={[styles.noMachinesText, { color: colors.textSecondary }]}>Makine bulunamadı</Text>
               ) : (
                 machines.map((machine) => {
                   const isSelected = selectedMachineIds.includes(machine.id);
@@ -790,6 +787,7 @@ export function JobsScreen() {
                       key={machine.id}
                       style={[
                         styles.machineOption,
+                        { backgroundColor: colors.inputBg, borderColor: isSelected ? colors.primary : colors.inputBorder },
                         isSelected && styles.machineOptionSelected,
                       ]}
                       onPress={() => toggleMachineSelection(machine.id)}
@@ -800,10 +798,10 @@ export function JobsScreen() {
                         )}
                       </View>
                       <View style={styles.machineOptionInfo}>
-                        <Text style={[styles.machineOptionName, isSelected && styles.machineOptionNameSelected]}>
+                        <Text style={[styles.machineOptionName, { color: isSelected ? colors.primary : colors.text }, isSelected && styles.machineOptionNameSelected]}>
                           {machine.name}
                         </Text>
-                        <Text style={styles.machineOptionDetails}>
+                        <Text style={[styles.machineOptionDetails, { color: colors.textSecondary }]}>
                           {machine.brand} • {machine.plateNumber}
                         </Text>
                       </View>
@@ -813,13 +811,13 @@ export function JobsScreen() {
               )}
             </View>
             {selectedMachineIds.length > 0 && (
-              <Text style={styles.selectedMachinesCount}>
+              <Text style={[styles.selectedMachinesCount, { color: colors.primary }]}>
                 {selectedMachineIds.length} makine seçildi
               </Text>
             )}
           </ScrollView>
 
-          <View style={styles.modalFooter}>
+          <View style={[styles.modalFooter, { backgroundColor: colors.card, borderTopColor: colors.cardBorder }]}>
             <Button
               title="İş Ekle"
               onPress={handleAddJob}
@@ -837,8 +835,8 @@ export function JobsScreen() {
         presentationStyle="fullScreen"
         onRequestClose={() => setShowMapPickerModal(false)}
       >
-        <View style={styles.mapModalContainer}>
-          <View style={styles.mapModalHeader}>
+        <View style={[styles.mapModalContainer, { backgroundColor: colors.background }]}>
+          <View style={[styles.mapModalHeader, { backgroundColor: colors.card, borderBottomColor: colors.cardBorder }]}>
             <TouchableOpacity
               onPress={() => {
                 setShowMapPickerModal(false);
@@ -846,15 +844,15 @@ export function JobsScreen() {
               }}
               style={styles.closeButton}
             >
-              <Ionicons name="close" size={24} color="#FFFFFF" />
+              <Ionicons name="close" size={24} color={colors.text} />
             </TouchableOpacity>
-            <Text style={styles.modalTitle}>Konum Seç</Text>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>Konum Seç</Text>
             <TouchableOpacity
               onPress={handleSelectLocation}
-              style={[styles.selectButton, !selectedLocation && styles.selectButtonDisabled]}
+              style={[styles.selectButton, { backgroundColor: selectedLocation ? colors.primary : colors.activeBackground }, !selectedLocation && styles.selectButtonDisabled]}
               disabled={!selectedLocation}
             >
-              <Text style={[styles.selectButtonText, !selectedLocation && styles.selectButtonTextDisabled]}>
+              <Text style={[styles.selectButtonText, { color: selectedLocation ? '#FFFFFF' : colors.textSecondary }, !selectedLocation && styles.selectButtonTextDisabled]}>
                 Seç
               </Text>
             </TouchableOpacity>
@@ -937,15 +935,15 @@ export function JobsScreen() {
         onRequestClose={() => setShowDetailModal(false)}
       >
         {selectedJob && (
-          <View style={styles.modalContainer}>
-            <View style={styles.modalHeader}>
+          <View style={[styles.modalContainer, { backgroundColor: colors.background }]}>
+            <View style={[styles.modalHeader, { backgroundColor: colors.card, borderBottomColor: colors.cardBorder }]}>
               <TouchableOpacity
                 onPress={() => setShowDetailModal(false)}
                 style={styles.closeButton}
               >
-                <Ionicons name="close" size={24} color="#FFFFFF" />
+                <Ionicons name="close" size={24} color={colors.text} />
               </TouchableOpacity>
-              <Text style={styles.modalTitle}>İş Detayı</Text>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>İş Detayı</Text>
               <View style={{ width: 40 }} />
             </View>
 
@@ -1169,9 +1167,14 @@ const styles = StyleSheet.create({
   filterContainer: {
     borderBottomWidth: 1,
   },
+  filterHeader: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 8,
+  },
   filterList: {
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingBottom: 12,
     gap: 8,
   },
   filterChip: {
@@ -1653,24 +1656,17 @@ const styles = StyleSheet.create({
     marginLeft: 10,
     fontWeight: '500',
   },
-  // Operator filter toggle styles
-  operatorFilterContainer: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-  },
   myJobsToggle: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
-    alignSelf: 'flex-start',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
   },
   myJobsToggleText: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '600',
-    marginLeft: 8,
+    marginLeft: 6,
   },
   // Assigned Operator styles
   assignedOperatorRow: {
