@@ -7,7 +7,6 @@ import {
   Logger,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
-import { Prisma } from '@prisma/client';
 
 interface ErrorResponse {
   statusCode: number;
@@ -16,6 +15,17 @@ interface ErrorResponse {
   timestamp: string;
   path: string;
   method: string;
+}
+
+// Type guard for Prisma errors
+function isPrismaError(exception: unknown): exception is { code: string; meta?: any } {
+  return (
+    typeof exception === 'object' &&
+    exception !== null &&
+    'code' in exception &&
+    typeof (exception as any).code === 'string' &&
+    (exception as any).code.startsWith('P')
+  );
 }
 
 @Catch()
@@ -45,7 +55,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       }
     }
     // Handle Prisma errors
-    else if (exception instanceof Prisma.PrismaClientKnownRequestError) {
+    else if (isPrismaError(exception)) {
       status = HttpStatus.BAD_REQUEST;
       error = 'Database Error';
 
@@ -67,12 +77,6 @@ export class GlobalExceptionFilter implements ExceptionFilter {
         default:
           message = 'Veritabanı işlemi başarısız';
       }
-    }
-    // Handle Prisma validation errors
-    else if (exception instanceof Prisma.PrismaClientValidationError) {
-      status = HttpStatus.BAD_REQUEST;
-      message = 'Geçersiz veri formatı';
-      error = 'Validation Error';
     }
     // Handle generic errors
     else if (exception instanceof Error) {

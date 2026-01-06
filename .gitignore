@@ -28,6 +28,10 @@ dist-ssr
 .env.local
 .env.*.local
 
+# Firebase credentials
+*firebase*.json
+smartop-app-*.json
+
 # Backend specific
 backend/dist
 backend/node_modules
@@ -42,3 +46,7 @@ backend/generated
 # Docker
 .docker
 .playwright-mcp/
+
+# AI/Claude frameworks
+.bmad/
+.superclaude/

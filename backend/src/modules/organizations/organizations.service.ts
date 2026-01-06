@@ -99,7 +99,7 @@ export class OrganizationsService {
       activeJobs: activeJobsCount,
       pendingApprovals: pendingApprovalsCount,
       machinesByStatus: machinesByStatus.reduce(
-        (acc, item) => {
+        (acc: any, item: any) => {
           acc[item.status] = item._count.status;
           return acc;
         },

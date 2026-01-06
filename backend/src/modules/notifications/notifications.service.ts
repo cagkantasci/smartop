@@ -260,7 +260,7 @@ export class NotificationsService {
       },
     });
 
-    const userIds = users.map((u) => u.id);
+    const userIds: string[] = users.map((u: any) => u.id);
     if (machine.assignedOperatorId) {
       userIds.push(machine.assignedOperatorId);
     }
@@ -306,7 +306,7 @@ export class NotificationsService {
         where: whereClause,
         select: { id: true },
       });
-      userIds = users.map((u) => u.id);
+      userIds = users.map((u: any) => u.id);
     }
 
     if (userIds.length === 0) {

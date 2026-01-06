@@ -225,11 +225,11 @@ export class JobsService {
       select: { id: true },
     });
 
-    const operator = job.jobAssignments.find(a => a.operator)?.operator;
+    const operator = job.jobAssignments.find((a: any) => a.operator)?.operator;
     const operatorName = operator ? `${operator.firstName} ${operator.lastName}` : 'Operatör';
 
     if (managers.length > 0) {
-      const managerIds = managers.map(m => m.id);
+      const managerIds = managers.map((m: any) => m.id);
       await this.notificationsService.createBulk(
         organizationId,
         managerIds,
@@ -277,7 +277,7 @@ export class JobsService {
     });
 
     if (managers.length > 0) {
-      const managerIds = managers.map(m => m.id);
+      const managerIds = managers.map((m: any) => m.id);
       await this.notificationsService.createBulk(
         organizationId,
         managerIds,

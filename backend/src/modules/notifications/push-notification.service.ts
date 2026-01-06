@@ -2,7 +2,8 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import * as admin from 'firebase-admin';
-import { DevicePlatform } from '@prisma/client';
+
+type DevicePlatform = 'ios' | 'android' | 'web';
 
 interface PushPayload {
   title: string;
@@ -148,7 +149,7 @@ export class PushNotificationService implements OnModuleInit {
       select: { token: true },
     });
 
-    return tokens.map(t => t.token);
+    return tokens.map((t: any) => t.token);
   }
 
   async getUsersTokens(userIds: string[]): Promise<Map<string, string[]>> {
